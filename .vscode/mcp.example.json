@@ -1,0 +1,25 @@
+{
+  "servers": {
+    "qdrant-project-memory": {
+      "command": "uvx",
+      "args": ["mcp-server-qdrant"],
+      "env": {
+        "QDRANT_URL": "http://localhost:6333",
+        "COLLECTION_NAME": "cryptotrading_docs",
+        "EMBEDDING_MODEL": "BAAI/bge-m3"
+      }
+    },
+    "filesystem-project": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ]
+    },
+    "memory-light": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }
+  }
+}
