@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   XCircle,
   Clock,
-  Layers
+  Layers,
+  BrainCircuit
 } from 'lucide-react';
 
 // API Configuration
@@ -33,6 +34,22 @@ interface MetricsSnapshot {
   drawdown: number;
   strategyScores: Record<string, number>;
   assetScores: Record<string, number>;
+}
+
+interface IntelligenceSnapshot {
+  symbol: string;
+  interval: string;
+  snapshotTime: string;
+  schemaVersion: string;
+  modelVersion: string;
+  scoreVersion: string;
+  scoreSource: string;
+  marketRegime: string;
+  regimeConfidence: number;
+  anomalyScore: number;
+  volatilityScore: number;
+  hasAnomaly: boolean;
+  insights: string[];
 }
 
 interface TradeLog {
@@ -69,6 +86,25 @@ export default function App() {
     drawdown: 0,
     strategyScores: { 'AtrBreakout': 85, 'EmaCrossover': 72 },
     assetScores: { 'BTCUSDT': 90, 'ETHUSDT': 80 }
+  });
+
+  const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>({
+    symbol: 'BTCUSDT',
+    interval: '1m',
+    snapshotTime: new Date().toISOString(),
+    schemaVersion: 'intelligence-snapshot/v1',
+    modelVersion: 'heuristic-m6-v1',
+    scoreVersion: 'score-v1',
+    scoreSource: 'FeatureStore.CandleFeature',
+    marketRegime: 'Sideways',
+    regimeConfidence: 52,
+    anomalyScore: 18,
+    volatilityScore: 34,
+    hasAnomaly: false,
+    insights: [
+      'Regime detected as Sideways from FeatureStore indicators.',
+      'Anomaly score 18.00/100 using volume, imbalance, spread and returns.'
+    ]
   });
 
   const [systemLogs, setSystemLogs] = useState<string[]>([
@@ -135,8 +171,22 @@ export default function App() {
       }
     };
 
+    const fetchIntelligence = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/intelligence/snapshot?symbol=BTCUSDT&interval=1m&windowHours=48`);
+        if (res.ok) {
+          const data = await res.json();
+          setIntelligence(data);
+        }
+      } catch (err) {
+        // Standalone simulation mode keeps the seeded intelligence snapshot.
+      }
+    };
+
     fetchMetrics();
+    fetchIntelligence();
     const intervalId = window.setInterval(fetchMetrics, 3000);
+    const intelligenceIntervalId = window.setInterval(fetchIntelligence, 10000);
 
     // Setup SignalR Hub Connection
     const connection = new signalR.HubConnectionBuilder()
@@ -162,6 +212,7 @@ export default function App() {
     return () => {
       connection.stop();
       window.clearInterval(intervalId);
+      window.clearInterval(intelligenceIntervalId);
     };
   }, []);
 
@@ -592,6 +643,45 @@ export default function App() {
                         <div style={{ background: 'linear-gradient(to right, var(--color-accent), var(--color-success))', width: `${score}%`, height: '100%' }}></div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="premium-card">
+                <div className="premium-card-title">
+                  <h3>
+                    <BrainCircuit size={18} style={{ color: 'var(--color-accent)' }} />
+                    Intelligence Snapshot
+                  </h3>
+                  <span className={`badge ${intelligence.hasAnomaly ? 'warning' : 'success'}`}>
+                    {intelligence.marketRegime}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="intel-stat">
+                    <span>Regime</span>
+                    <strong>{intelligence.regimeConfidence.toFixed(2)}%</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Anomalia</span>
+                    <strong>{intelligence.anomalyScore.toFixed(2)}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Volatilidade</span>
+                    <strong>{intelligence.volatilityScore.toFixed(2)}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Modelo</span>
+                    <strong>{intelligence.modelVersion}</strong>
+                  </div>
+                </div>
+                <div className="intel-meta">
+                  <span>{intelligence.scoreVersion}</span>
+                  <span>{intelligence.scoreSource}</span>
+                </div>
+                <div className="intel-insights">
+                  {intelligence.insights.slice(0, 3).map((insight, i) => (
+                    <div key={i}>{insight}</div>
                   ))}
                 </div>
               </div>

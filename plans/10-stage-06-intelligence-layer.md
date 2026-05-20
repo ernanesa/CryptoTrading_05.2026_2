@@ -39,8 +39,8 @@ Fontes iniciais:
 
 ## Critérios de aceite
 
-- [ ] IntelligenceSnapshot versionado;
-- [ ] modelo/score tem versão;
-- [ ] fonte do score registrada;
-- [ ] insights aparecem no dashboard;
-- [ ] nenhum modelo bypassa RiskEngine.
+- [x] IntelligenceSnapshot versionado;
+- [x] modelo/score tem versão;
+- [x] fonte do score registrada;
+- [x] insights aparecem no dashboard;
+- [x] nenhum modelo bypassa RiskEngine.

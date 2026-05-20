@@ -12,20 +12,46 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 | M3 Paper Trading + Risk | Completed |
 | M4 Binance Spot Testnet | Completed |
 | M5 Dashboard + Observability | Completed |
-| M6 Intelligence Layer | Not started |
+| M6 Intelligence Layer | In progress |
 | M7 Adaptive Strategy Orchestration | Not started |
 | M8 Hardening | Not started |
 
 ## Checklist antes de qualquer atividade
 
-- [ ] data atual verificada;
-- [ ] plano consultado;
-- [ ] RAG consultado quando necessário;
+- [x] data atual verificada;
+- [x] plano consultado;
+- [x] RAG consultado quando necessário;
 - [ ] documentação oficial consultada quando aplicável;
-- [ ] entrega de valor definida;
-- [ ] critérios de aceite definidos;
-- [ ] riscos listados;
-- [ ] testes definidos.
+- [x] entrega de valor definida;
+- [x] critérios de aceite definidos;
+- [x] riscos listados;
+- [x] testes definidos.
+
+## M6 — Intelligence Layer checklist
+
+- [x] IntelligenceSnapshot versionado;
+- [x] modelo/score tem versão;
+- [x] fonte do score registrada;
+- [x] insights aparecem no dashboard;
+- [x] nenhum modelo bypassa RiskEngine;
+- [ ] FeatureExtractor;
+- [x] AnomalyDetectionService inicial;
+- [x] RegimeDetectionService inicial;
+- [ ] VolatilityForecastService;
+- [ ] MetaLabelingService;
+- [ ] SentimentRiskService;
+- [ ] EventRiskClassifier;
+- [ ] ModelRegistry;
+- [ ] RagContextProvider;
+- [ ] ExplanationService.
+
+### Registro da atividade M6 inicial
+
+RAG consultado: sim
+Consulta: M6 IntelligenceSnapshot RegimeDetectionService AnomalyDetectionService criterios aceite
+Contexto encontrado: componentes da Stage 06 e criterios de aceite do IntelligenceSnapshot.
+Impacto: implementacao inicial mantida como score heuristico versionado, sem bypass do RiskEngine.
+Data: 2026-05-20
 
 ## M7 — Adaptive Orchestration checklist
 

@@ -25,6 +25,9 @@ builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
 builder.Services.AddSingleton<StrategyRegistry>();
 builder.Services.AddTransient<BacktestEngine>();
 builder.Services.AddSingleton<IRiskEngine, RiskEngine>();
+builder.Services.AddSingleton<IRegimeDetectionService, RegimeDetectionService>();
+builder.Services.AddSingleton<IAnomalyDetectionService, AnomalyDetectionService>();
+builder.Services.AddSingleton<IIntelligenceSnapshotService, IntelligenceSnapshotService>();
 builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();
 builder.Services.AddTransient<BinanceTestnetExecutor>();
@@ -52,6 +55,32 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = Dat
 
 app.MapGet("/api/metrics", (IMetricsService metrics) => Results.Ok(metrics.GetSnapshot()))
     .WithName("GetMetricsSnapshot");
+
+app.MapGet("/api/intelligence/snapshot", async (
+    string symbol,
+    string interval,
+    IFeatureStore store,
+    IIntelligenceSnapshotService intelligence,
+    int windowHours = 48) =>
+{
+    var endUtc = DateTime.UtcNow;
+    var startUtc = endUtc.AddHours(-Math.Clamp(windowHours, 1, 720));
+    var points = await store.GetMarketDataPointsAsync(symbol, interval, startUtc, endUtc);
+    var features = points
+        .Select(p => p.Feature)
+        .Where(f => f != null)
+        .OrderBy(f => f.OpenTime)
+        .ToList();
+
+    if (features.Count == 0)
+    {
+        return Results.NotFound(new { Message = $"Nenhuma feature encontrada para {symbol}/{interval} nas ultimas {windowHours}h." });
+    }
+
+    var snapshot = intelligence.CreateSnapshot(symbol, interval, features);
+    return Results.Ok(snapshot);
+})
+.WithName("GetIntelligenceSnapshot");
 
 // 1. Listar todas as estratégias registradas
 app.MapGet("/api/strategies", (StrategyRegistry registry) =>
