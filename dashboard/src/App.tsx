@@ -68,6 +68,43 @@ interface IntelligenceSnapshot {
     confidence: number;
     riskBand: string;
   };
+  metaLabel: {
+    modelVersion: string;
+    label: string;
+    probability: number;
+    qualityScore: number;
+    isTradeContextFavorable: boolean;
+  };
+  sentimentRisk: {
+    modelVersion: string;
+    sentimentScore: number;
+    riskScore: number;
+    riskBand: string;
+    sources: string[];
+  };
+  eventRisk: {
+    modelVersion: string;
+    eventRiskScore: number;
+    severity: string;
+    eventTags: string[];
+  };
+  ragContext: {
+    providerVersion: string;
+    source: string;
+    query: string;
+    contextItems: string[];
+  };
+  explanation: {
+    modelVersion: string;
+    summary: string;
+    factors: string[];
+  };
+  registeredModels: Array<{
+    name: string;
+    version: string;
+    purpose: string;
+    source: string;
+  }>;
   insights: string[];
 }
 
@@ -139,6 +176,44 @@ export default function App() {
       confidence: 100,
       riskBand: 'Normal'
     },
+    metaLabel: {
+      modelVersion: 'meta-label-heuristic-m6-v1',
+      label: 'Neutral',
+      probability: 52,
+      qualityScore: 76,
+      isTradeContextFavorable: false
+    },
+    sentimentRisk: {
+      modelVersion: 'sentiment-risk-heuristic-m6-v1',
+      sentimentScore: 50,
+      riskScore: 18,
+      riskBand: 'Neutral',
+      sources: ['FeatureStore momentum/trend proxy', 'EventRiskClassifier market context']
+    },
+    eventRisk: {
+      modelVersion: 'event-risk-heuristic-m6-v1',
+      eventRiskScore: 12,
+      severity: 'Low',
+      eventTags: ['no-material-event']
+    },
+    ragContext: {
+      providerVersion: 'rag-context-provider-m6-v1',
+      source: 'local-plans-rag',
+      query: 'M6 intelligence context BTCUSDT 1m Sideways',
+      contextItems: [
+        'ML, sentimento e eventos sao contexto auxiliar e nao executam acoes.',
+        'RiskEngine continua sendo o gate obrigatorio para decisoes relevantes.'
+      ]
+    },
+    explanation: {
+      modelVersion: 'explanation-heuristic-m6-v1',
+      summary: 'BTCUSDT/1m: Sideways, volatilidade Normal, sentimento Neutral.',
+      factors: ['Snapshot e apenas contexto; execucao permanece condicionada ao RiskEngine.']
+    },
+    registeredModels: [
+      { name: 'FeatureExtractor', version: 'feature-vector/v1', purpose: 'Normaliza indicadores para contexto de inteligencia.', source: 'CryptoTrading.Application.Services' },
+      { name: 'ExplanationService', version: 'explanation-heuristic-m6-v1', purpose: 'Gera explicacoes deterministicas do snapshot.', source: 'CryptoTrading.Application.Services' }
+    ],
     insights: [
       'Regime detected as Sideways from FeatureStore indicators.',
       'Anomaly score 18.00/100 using volume, imbalance, spread and returns.',
@@ -721,14 +796,33 @@ export default function App() {
                     <span>Momentum</span>
                     <strong>{intelligence.featureVector.momentumScore.toFixed(2)}</strong>
                   </div>
+                  <div className="intel-stat">
+                    <span>Meta-label</span>
+                    <strong>{intelligence.metaLabel.label}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Sentimento</span>
+                    <strong>{intelligence.sentimentRisk.riskBand}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Evento</span>
+                    <strong>{intelligence.eventRisk.severity}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Modelos</span>
+                    <strong>{intelligence.registeredModels.length}</strong>
+                  </div>
                 </div>
                 <div className="intel-meta">
                   <span>{intelligence.modelVersion}</span>
                   <span>{intelligence.featureVector.version}</span>
                   <span>{intelligence.volatilityForecast.modelVersion}</span>
+                  <span>{intelligence.metaLabel.modelVersion}</span>
+                  <span>{intelligence.sentimentRisk.modelVersion}</span>
                 </div>
                 <div className="intel-insights">
-                  {intelligence.insights.slice(0, 3).map((insight, i) => (
+                  <div>{intelligence.explanation.summary}</div>
+                  {intelligence.insights.slice(0, 4).map((insight, i) => (
                     <div key={i}>{insight}</div>
                   ))}
                 </div>

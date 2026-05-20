@@ -15,3 +15,4 @@
 | 2026-05-20 | Implementação completa da M4: Binance Spot Testnet — Integração sandbox/real, ExchangeRuleValidator local (Tick/Step size, Min Qty/Notional), BinanceTestnetExecutor com suporte dry-run, OrderStatusSynchronizer de ordens abertas, mascaramento estrito de segredos e testes unitários robustos |
 | 2026-05-20 | Iniciada M6: Intelligence Layer — IntelligenceSnapshot versionado, RegimeDetectionService, AnomalyDetectionService, endpoint de snapshot e visualização no dashboard |
 | 2026-05-20 | Evolução da M6: FeatureExtractor versionado e VolatilityForecastService heurístico adicionados ao IntelligenceSnapshot e ao dashboard |
+| 2026-05-20 | Implementação completa da M6: Intelligence Layer — MetaLabeling, SentimentRisk, EventRisk, ModelRegistry, RagContext e Explanation integrados ao snapshot e dashboard |

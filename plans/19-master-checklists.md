@@ -12,7 +12,7 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 | M3 Paper Trading + Risk | Completed |
 | M4 Binance Spot Testnet | Completed |
 | M5 Dashboard + Observability | Completed |
-| M6 Intelligence Layer | In progress |
+| M6 Intelligence Layer | Completed |
 | M7 Adaptive Strategy Orchestration | Not started |
 | M8 Hardening | Not started |
 
@@ -38,12 +38,12 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 - [x] AnomalyDetectionService inicial;
 - [x] RegimeDetectionService inicial;
 - [x] VolatilityForecastService;
-- [ ] MetaLabelingService;
-- [ ] SentimentRiskService;
-- [ ] EventRiskClassifier;
-- [ ] ModelRegistry;
-- [ ] RagContextProvider;
-- [ ] ExplanationService.
+- [x] MetaLabelingService;
+- [x] SentimentRiskService;
+- [x] EventRiskClassifier;
+- [x] ModelRegistry;
+- [x] RagContextProvider;
+- [x] ExplanationService.
 
 ### Registro da atividade M6 inicial
 
@@ -59,6 +59,14 @@ RAG consultado: sim
 Consulta: M6 FeatureExtractor VolatilityForecastService IntelligenceSnapshot FeatureStore criterios aceite
 Contexto encontrado: componentes pendentes da Stage 06 e criterio de features versionadas da Stage 01.
 Impacto: adicionados vetor de features versionado e forecast heuristico de volatilidade ao snapshot, mantendo score como contexto auxiliar.
+Data: 2026-05-20
+
+### Registro da atividade M6 fechamento
+
+RAG consultado: sim
+Consulta: M6 MetaLabelingService SentimentRiskService EventRiskClassifier ModelRegistry RagContextProvider ExplanationService finalizar Intelligence Layer
+Contexto encontrado: componentes finais da Stage 06, objetivo de inteligencia auxiliar e regra de sentimento como filtro/contexto.
+Impacto: M6 concluida com todos os componentes planejados no snapshot, mantendo execucao condicionada ao RiskEngine.
 Data: 2026-05-20
 
 ## M7 — Adaptive Orchestration checklist

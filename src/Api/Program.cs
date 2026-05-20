@@ -29,6 +29,12 @@ builder.Services.AddSingleton<IRegimeDetectionService, RegimeDetectionService>()
 builder.Services.AddSingleton<IAnomalyDetectionService, AnomalyDetectionService>();
 builder.Services.AddSingleton<IFeatureExtractor, FeatureExtractor>();
 builder.Services.AddSingleton<IVolatilityForecastService, VolatilityForecastService>();
+builder.Services.AddSingleton<IMetaLabelingService, MetaLabelingService>();
+builder.Services.AddSingleton<IEventRiskClassifier, EventRiskClassifier>();
+builder.Services.AddSingleton<ISentimentRiskService, SentimentRiskService>();
+builder.Services.AddSingleton<IModelRegistry, ModelRegistry>();
+builder.Services.AddSingleton<IRagContextProvider, RagContextProvider>();
+builder.Services.AddSingleton<IExplanationService, ExplanationService>();
 builder.Services.AddSingleton<IIntelligenceSnapshotService, IntelligenceSnapshotService>();
 builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();

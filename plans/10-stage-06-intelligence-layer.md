@@ -10,17 +10,17 @@ ML não executa ação diretamente. ML gera score/contexto. RiskEngine e Orchest
 
 ## Componentes
 
-- IntelligenceSnapshot;
-- FeatureExtractor;
-- AnomalyDetectionService;
-- RegimeDetectionService;
-- VolatilityForecastService;
-- MetaLabelingService;
-- SentimentRiskService;
-- EventRiskClassifier;
-- ModelRegistry;
-- RagContextProvider;
-- ExplanationService.
+- [x] IntelligenceSnapshot;
+- [x] FeatureExtractor;
+- [x] AnomalyDetectionService;
+- [x] RegimeDetectionService;
+- [x] VolatilityForecastService;
+- [x] MetaLabelingService;
+- [x] SentimentRiskService;
+- [x] EventRiskClassifier;
+- [x] ModelRegistry;
+- [x] RagContextProvider;
+- [x] ExplanationService.
 
 ## ML.NET como serviço
 

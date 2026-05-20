@@ -9,7 +9,13 @@ public class IntelligenceSnapshotServiceTests
         new RegimeDetectionService(),
         new AnomalyDetectionService(),
         new FeatureExtractor(),
-        new VolatilityForecastService());
+        new VolatilityForecastService(),
+        new MetaLabelingService(),
+        new EventRiskClassifier(),
+        new SentimentRiskService(),
+        new ModelRegistry(),
+        new RagContextProvider(),
+        new ExplanationService());
 
     [Fact]
     public void CreateSnapshot_TrendingFeatures_ReturnsVersionedSnapshot()
@@ -26,6 +32,12 @@ public class IntelligenceSnapshotServiceTests
         Assert.Equal("FeatureStore.CandleFeature", snapshot.ScoreSource);
         Assert.Equal("feature-vector/v1", snapshot.FeatureVector.Version);
         Assert.Equal("volatility-heuristic-m6-v1", snapshot.VolatilityForecast.ModelVersion);
+        Assert.Equal("meta-label-heuristic-m6-v1", snapshot.MetaLabel.ModelVersion);
+        Assert.Equal("sentiment-risk-heuristic-m6-v1", snapshot.SentimentRisk.ModelVersion);
+        Assert.Equal("event-risk-heuristic-m6-v1", snapshot.EventRisk.ModelVersion);
+        Assert.Equal("rag-context-provider-m6-v1", snapshot.RagContext.ProviderVersion);
+        Assert.Equal("explanation-heuristic-m6-v1", snapshot.Explanation.ModelVersion);
+        Assert.NotEmpty(snapshot.RegisteredModels);
         Assert.Equal("TrendingUp", snapshot.MarketRegime);
         Assert.True(snapshot.RegimeConfidence > 0m);
         Assert.True(snapshot.VolatilityForecast.HorizonMinutes > 0);
@@ -61,6 +73,27 @@ public class IntelligenceSnapshotServiceTests
         Assert.Equal("Elevated", snapshot.VolatilityForecast.RiskBand);
         Assert.True(snapshot.VolatilityForecast.ForecastScore >= 75m);
         Assert.Equal(15, snapshot.VolatilityForecast.HorizonMinutes);
+    }
+
+    [Fact]
+    public void CreateSnapshot_ElevatedContext_KeepsIntelligenceAsRiskContextOnly()
+    {
+        var features = CreateFeatures(
+            ema21: 125m,
+            ema50: 100m,
+            adx: 42m,
+            volumeZScore: 4m,
+            imbalance: 1m,
+            returns: 0.04m,
+            atr14: 90m,
+            spread: 35m);
+
+        var snapshot = _service.CreateSnapshot("BNBUSDT", "1m", features);
+
+        Assert.False(snapshot.MetaLabel.IsTradeContextFavorable);
+        Assert.Equal("RiskOff", snapshot.SentimentRisk.RiskBand);
+        Assert.Equal("High", snapshot.EventRisk.Severity);
+        Assert.Contains("RiskEngine", snapshot.Explanation.Factors.Last());
     }
 
     [Fact]
