@@ -1,0 +1,1 @@
+# CryptoTrading_05.2026_2
