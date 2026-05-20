@@ -70,6 +70,12 @@ M8 Hardening
 
 Status atual: **M0 a M8 concluídos** em 2026-05-20, com relatório de hardening em [`plans/26-hardening-report.md`](./plans/26-hardening-report.md).
 
+Benchmarks locais:
+
+```bash
+dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*'
+```
+
 ## Documentação
 
 Toda a documentação inicial está em [`plans/`](./plans/README.md).

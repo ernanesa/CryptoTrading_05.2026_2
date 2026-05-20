@@ -32,7 +32,7 @@ public class HardeningTests
     [Fact]
     public void HardeningReportService_GeneratesReleaseCandidateReport()
     {
-        var service = new HardeningReportService(new ChaosScenarioRunner());
+        var service = new HardeningReportService(new ChaosScenarioRunner(), new BenchmarkCatalog());
 
         var report = service.Generate();
 
@@ -42,5 +42,17 @@ public class HardeningTests
         Assert.NotEmpty(report.Benchmarks);
         Assert.NotEmpty(report.KnownRisks);
         Assert.NotEmpty(report.Alerts);
+    }
+
+    [Fact]
+    public void BenchmarkCatalog_RegistersExecutableHarnessCommands()
+    {
+        var catalog = new BenchmarkCatalog();
+
+        var benchmarks = catalog.Build();
+
+        Assert.Contains(benchmarks, b => b.Name == "IndicatorService.CalculateFeatures");
+        Assert.Contains(benchmarks, b => b.Command.Contains("tools/benchmarks/CryptoTrading.Benchmarks"));
+        Assert.All(benchmarks, b => Assert.False(string.IsNullOrWhiteSpace(b.Command)));
     }
 }

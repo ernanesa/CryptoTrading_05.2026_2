@@ -53,6 +53,7 @@ builder.Services.AddSingleton<WalkForwardEvaluator>();
 builder.Services.AddSingleton<AdaptiveStrategyOrchestrator>();
 builder.Services.AddSingleton<SecretRedactor>();
 builder.Services.AddSingleton<ChaosScenarioRunner>();
+builder.Services.AddSingleton<BenchmarkCatalog>();
 builder.Services.AddSingleton<HardeningReportService>();
 builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();

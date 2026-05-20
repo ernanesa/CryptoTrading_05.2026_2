@@ -20,10 +20,14 @@ Registrar o fechamento da M8 com gates de qualidade, seguranca, performance, obs
 
 | Nome | Alvo | Ferramenta | Comando |
 |---|---|---|---|
-| IndicatorService.CalculateFeatures | Throughput de calculo de features por lote de candles | BenchmarkDotNet | `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Indicator*` |
-| FeatureStore.GetMarketDataPointsAsync | Latencia de leitura Dapper/Npgsql para backtests e orquestracao | BenchmarkDotNet + fixture PostgreSQL | `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore*` |
-| AdaptiveStrategyOrchestrator.Decide | Latencia do Control Plane adaptativo | BenchmarkDotNet | `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Adaptive*` |
+| IndicatorService.CalculateFeatures | Throughput de calculo de features por lote de candles | Local benchmark harness (BenchmarkDotNet-ready) | `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Indicator*` |
+| FeatureStore.GetMarketDataPointsAsync | Latencia de leitura Dapper/Npgsql para backtests e orquestracao | Local benchmark harness + fixture PostgreSQL | `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore*` |
+| AdaptiveStrategyOrchestrator.Decide | Latencia do Control Plane adaptativo | Local benchmark harness (BenchmarkDotNet-ready) | `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Adaptive*` |
 | Api.NativeAot.Publish | Compatibilidade AOT seletiva da API | dotnet publish | `dotnet publish src/Api/CryptoTrading.Api.csproj -c Release -r linux-x64 /p:PublishAot=true` |
+
+## Harness local
+
+O projeto `tools/benchmarks/CryptoTrading.Benchmarks` executa os cenarios locais com `Stopwatch` e saida tabular. Ele evita dependencia de rede no ambiente de desenvolvimento atual e mantem comandos compativeis com uma migracao futura para BenchmarkDotNet.
 
 ## Chaos scenarios registrados
 

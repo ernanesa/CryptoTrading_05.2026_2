@@ -104,18 +104,58 @@ public class ChaosScenarioRunner
     }
 }
 
+public class BenchmarkCatalog
+{
+    public List<BenchmarkRegistration> Build()
+    {
+        return new List<BenchmarkRegistration>
+        {
+            new()
+            {
+                Name = "IndicatorService.CalculateFeatures",
+                Target = "Feature calculation throughput for candle batches.",
+                Tool = "Local benchmark harness (BenchmarkDotNet-ready)",
+                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Indicator*"
+            },
+            new()
+            {
+                Name = "FeatureStore.GetMarketDataPointsAsync",
+                Target = "Dapper/Npgsql read path latency for backtests and orchestration.",
+                Tool = "Local benchmark harness + PostgreSQL fixture",
+                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore*"
+            },
+            new()
+            {
+                Name = "AdaptiveStrategyOrchestrator.Decide",
+                Target = "Control Plane scoring and allocation latency.",
+                Tool = "Local benchmark harness (BenchmarkDotNet-ready)",
+                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Adaptive*"
+            },
+            new()
+            {
+                Name = "Api.NativeAot.Publish",
+                Target = "Selective AOT compatibility gate for API.",
+                Tool = "dotnet publish",
+                Command = "dotnet publish src/Api/CryptoTrading.Api.csproj -c Release -r linux-x64 /p:PublishAot=true"
+            }
+        };
+    }
+}
+
 public class HardeningReportService
 {
     private readonly ChaosScenarioRunner _chaosRunner;
+    private readonly BenchmarkCatalog _benchmarkCatalog;
 
-    public HardeningReportService(ChaosScenarioRunner chaosRunner)
+    public HardeningReportService(ChaosScenarioRunner chaosRunner, BenchmarkCatalog benchmarkCatalog)
     {
         _chaosRunner = chaosRunner;
+        _benchmarkCatalog = benchmarkCatalog;
     }
 
     public HardeningReport Generate()
     {
-        var benchmarks = BuildBenchmarkRegistrations();
+        var benchmarks = _benchmarkCatalog.Build();
         var chaos = _chaosRunner.Run();
         var gates = BuildGates(benchmarks, chaos);
         var risks = BuildKnownRisks();
@@ -165,41 +205,6 @@ public class HardeningReportService
             Name = name,
             Passed = true,
             Evidence = evidence
-        };
-    }
-
-    private static List<BenchmarkRegistration> BuildBenchmarkRegistrations()
-    {
-        return new List<BenchmarkRegistration>
-        {
-            new()
-            {
-                Name = "IndicatorService.CalculateFeatures",
-                Target = "Feature calculation throughput for candle batches.",
-                Tool = "BenchmarkDotNet",
-                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Indicator*"
-            },
-            new()
-            {
-                Name = "FeatureStore.GetMarketDataPointsAsync",
-                Target = "Dapper/Npgsql read path latency for backtests and orchestration.",
-                Tool = "BenchmarkDotNet + PostgreSQL fixture",
-                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore*"
-            },
-            new()
-            {
-                Name = "AdaptiveStrategyOrchestrator.Decide",
-                Target = "Control Plane scoring and allocation latency.",
-                Tool = "BenchmarkDotNet",
-                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Adaptive*"
-            },
-            new()
-            {
-                Name = "Api.NativeAot.Publish",
-                Target = "Selective AOT compatibility gate for API.",
-                Tool = "dotnet publish",
-                Command = "dotnet publish src/Api/CryptoTrading.Api.csproj -c Release -r linux-x64 /p:PublishAot=true"
-            }
         };
     }
 
