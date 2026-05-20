@@ -13,22 +13,22 @@ Existe a melhor estratégia para aquele ativo, timeframe, regime, liquidez, cust
 
 ## Componentes
 
-- StrategyRegistry;
-- MarketRegimeService;
-- AssetRankingService;
-- StrategyPerformanceTracker;
-- StrategyScoringService;
-- AdaptiveStrategyOrchestrator;
-- AdaptivePortfolioAllocator;
-- DynamicPositionSizingService;
-- DynamicExitEngine;
-- ExecutionCostModel;
-- StrategyHealthMonitor;
-- TradeAttributionService;
-- WalkForwardEvaluator;
-- MultiArmedBanditAllocator;
-- DataQualityGate;
-- MarketHealthScore.
+- [x] StrategyRegistry;
+- [x] MarketRegimeService;
+- [x] AssetRankingService;
+- [x] StrategyPerformanceTracker;
+- [x] StrategyScoringService;
+- [x] AdaptiveStrategyOrchestrator;
+- [x] AdaptivePortfolioAllocator;
+- [x] DynamicPositionSizingService;
+- [x] DynamicExitEngine;
+- [x] ExecutionCostModel;
+- [x] StrategyHealthMonitor;
+- [x] TradeAttributionService;
+- [x] WalkForwardEvaluator;
+- [x] MultiArmedBanditAllocator;
+- [x] DataQualityGate;
+- [x] MarketHealthScore.
 
 ## Score de ativo
 
@@ -79,9 +79,9 @@ Só trocar estratégia se:
 
 ## Critérios de aceite
 
-- [ ] escolhe estratégias diferentes em regimes diferentes;
-- [ ] registra score e explicação;
-- [ ] usa histerese/cooldown;
-- [ ] pausa estratégia ruim;
-- [ ] compara fixo vs adaptativo;
-- [ ] dashboard mostra regime, score, estratégia ativa e motivo.
+- [x] escolhe estratégias diferentes em regimes diferentes;
+- [x] registra score e explicação;
+- [x] usa histerese/cooldown;
+- [x] pausa estratégia ruim;
+- [x] compara fixo vs adaptativo;
+- [x] dashboard mostra regime, score, estratégia ativa e motivo.

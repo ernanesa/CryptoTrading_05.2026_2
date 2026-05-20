@@ -13,7 +13,7 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 | M4 Binance Spot Testnet | Completed |
 | M5 Dashboard + Observability | Completed |
 | M6 Intelligence Layer | Completed |
-| M7 Adaptive Strategy Orchestration | Not started |
+| M7 Adaptive Strategy Orchestration | Completed |
 | M8 Hardening | Not started |
 
 ## Checklist antes de qualquer atividade
@@ -71,21 +71,29 @@ Data: 2026-05-20
 
 ## M7 — Adaptive Orchestration checklist
 
-- [ ] StrategyRegistry;
-- [ ] MarketRegimeService;
-- [ ] AssetRankingService;
-- [ ] StrategyPerformanceTracker;
-- [ ] StrategyScoringService;
-- [ ] AdaptiveStrategyOrchestrator;
-- [ ] AdaptivePortfolioAllocator;
-- [ ] DynamicPositionSizingService;
-- [ ] DynamicExitEngine;
-- [ ] ExecutionCostModel;
-- [ ] StrategyHealthMonitor;
-- [ ] TradeAttributionService;
-- [ ] WalkForwardEvaluator;
-- [ ] MultiArmedBanditAllocator;
-- [ ] DataQualityGate;
-- [ ] MarketHealthScore;
-- [ ] dashboard de score/regime/estratégia;
-- [ ] backtest fixo vs adaptativo.
+- [x] StrategyRegistry;
+- [x] MarketRegimeService;
+- [x] AssetRankingService;
+- [x] StrategyPerformanceTracker;
+- [x] StrategyScoringService;
+- [x] AdaptiveStrategyOrchestrator;
+- [x] AdaptivePortfolioAllocator;
+- [x] DynamicPositionSizingService;
+- [x] DynamicExitEngine;
+- [x] ExecutionCostModel;
+- [x] StrategyHealthMonitor;
+- [x] TradeAttributionService;
+- [x] WalkForwardEvaluator;
+- [x] MultiArmedBanditAllocator;
+- [x] DataQualityGate;
+- [x] MarketHealthScore;
+- [x] dashboard de score/regime/estratégia;
+- [x] backtest fixo vs adaptativo.
+
+### Registro da atividade M7 fechamento
+
+RAG consultado: sim
+Consulta: M7 AdaptiveStrategyOrchestrator AssetRanking StrategyScoring hysteresis cooldown RiskEngine DataQualityGate fixed vs adaptive dashboard
+Contexto encontrado: componentes da Stage 07, checklist M7 e Control Plane da arquitetura.
+Impacto: M7 concluida com Control Plane adaptativo heuristico, histerese/cooldown, gates de risco/qualidade, comparativo fixo vs adaptativo e dashboard.
+Data: 2026-05-20

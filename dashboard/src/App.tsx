@@ -108,6 +108,47 @@ interface IntelligenceSnapshot {
   insights: string[];
 }
 
+interface AdaptiveRecommendation {
+  symbol: string;
+  interval: string;
+  marketRegime: string;
+  activeStrategyName: string;
+  candidateStrategyName: string;
+  shouldSwitchStrategy: boolean;
+  strategyScore: number;
+  assetScore: number;
+  marketHealthScore: number;
+  allocationWeight: number;
+  positionSize: number;
+  executionCost: {
+    costBps: number;
+    score: number;
+    explanation: string;
+  };
+  strategyHealth: {
+    isPaused: boolean;
+    healthScore: number;
+    reason: string;
+  };
+  exitPolicy: {
+    policyName: string;
+    stopAtrMultiplier: number;
+    takeProfitAtrMultiplier: number;
+  };
+  walkForward: {
+    fixedStrategyScore: number;
+    adaptiveStrategyScore: number;
+    improvement: number;
+    verdict: string;
+  };
+  banditAllocation: {
+    selectedArm: string;
+    explorationWeight: number;
+    exploitationWeight: number;
+  };
+  reasons: string[];
+}
+
 interface TradeLog {
   time: string;
   type: string;
@@ -221,6 +262,50 @@ export default function App() {
     ]
   });
 
+  const [adaptive, setAdaptive] = useState<AdaptiveRecommendation>({
+    symbol: 'BTCUSDT',
+    interval: '1m',
+    marketRegime: 'Sideways',
+    activeStrategyName: 'Bollinger Mean Reversion',
+    candidateStrategyName: 'Bollinger Mean Reversion',
+    shouldSwitchStrategy: false,
+    strategyScore: 72,
+    assetScore: 74,
+    marketHealthScore: 68,
+    allocationWeight: 0.72,
+    positionSize: 7200,
+    executionCost: {
+      costBps: 4.2,
+      score: 83.2,
+      explanation: 'Estimated execution cost from liquidity and volatility context.'
+    },
+    strategyHealth: {
+      isPaused: false,
+      healthScore: 76,
+      reason: 'Strategy health is acceptable.'
+    },
+    exitPolicy: {
+      policyName: 'BalancedAtrExit',
+      stopAtrMultiplier: 2,
+      takeProfitAtrMultiplier: 3.2
+    },
+    walkForward: {
+      fixedStrategyScore: 64,
+      adaptiveStrategyScore: 72,
+      improvement: 8,
+      verdict: 'AdaptivePreferred'
+    },
+    banditAllocation: {
+      selectedArm: 'Bollinger Mean Reversion',
+      explorationWeight: 0.28,
+      exploitationWeight: 0.72
+    },
+    reasons: [
+      'Candidate strategy held by hysteresis/cooldown/risk gates.',
+      'DataQualityGate: OK; market health 68.00.'
+    ]
+  });
+
   const [systemLogs, setSystemLogs] = useState<string[]>([
     'System initialization successful. Target: .NET 10.0 Native AOT.',
     'FeatureStore schema validated. PostgreSQL connected.',
@@ -297,10 +382,24 @@ export default function App() {
       }
     };
 
+    const fetchAdaptive = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/adaptive/recommendation?symbol=BTCUSDT&interval=1m&currentStrategyName=RSI%20Mean%20Reversion&persistentAdvantageCycles=2&windowHours=48&portfolioValue=10000`);
+        if (res.ok) {
+          const data = await res.json();
+          setAdaptive(data);
+        }
+      } catch (err) {
+        // Standalone simulation mode keeps the seeded adaptive recommendation.
+      }
+    };
+
     fetchMetrics();
     fetchIntelligence();
+    fetchAdaptive();
     const intervalId = window.setInterval(fetchMetrics, 3000);
     const intelligenceIntervalId = window.setInterval(fetchIntelligence, 10000);
+    const adaptiveIntervalId = window.setInterval(fetchAdaptive, 10000);
 
     // Setup SignalR Hub Connection
     const connection = new signalR.HubConnectionBuilder()
@@ -327,6 +426,7 @@ export default function App() {
       connection.stop();
       window.clearInterval(intervalId);
       window.clearInterval(intelligenceIntervalId);
+      window.clearInterval(adaptiveIntervalId);
     };
   }, []);
 
@@ -824,6 +924,63 @@ export default function App() {
                   <div>{intelligence.explanation.summary}</div>
                   {intelligence.insights.slice(0, 4).map((insight, i) => (
                     <div key={i}>{insight}</div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="premium-card">
+                <div className="premium-card-title">
+                  <h3>
+                    <Activity size={18} style={{ color: 'var(--color-accent)' }} />
+                    Adaptive Orchestrator
+                  </h3>
+                  <span className={`badge ${adaptive.shouldSwitchStrategy ? 'warning' : 'info'}`}>
+                    {adaptive.shouldSwitchStrategy ? 'Switch' : 'Hold'}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="intel-stat">
+                    <span>Ativa</span>
+                    <strong>{adaptive.activeStrategyName}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Candidata</span>
+                    <strong>{adaptive.candidateStrategyName}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Strategy</span>
+                    <strong>{adaptive.strategyScore.toFixed(2)}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Ativo</span>
+                    <strong>{adaptive.assetScore.toFixed(2)}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Saude</span>
+                    <strong>{adaptive.marketHealthScore.toFixed(2)}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Posicao</span>
+                    <strong>${adaptive.positionSize.toFixed(2)}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Custo</span>
+                    <strong>{adaptive.executionCost.costBps.toFixed(2)} bps</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Walk-forward</span>
+                    <strong>{adaptive.walkForward.verdict}</strong>
+                  </div>
+                </div>
+                <div className="intel-meta">
+                  <span>{adaptive.marketRegime}</span>
+                  <span>{adaptive.exitPolicy.policyName}</span>
+                  <span>{adaptive.banditAllocation.selectedArm}</span>
+                  <span>{adaptive.strategyHealth.isPaused ? 'paused' : 'healthy'}</span>
+                </div>
+                <div className="intel-insights">
+                  {adaptive.reasons.slice(0, 4).map((reason, i) => (
+                    <div key={i}>{reason}</div>
                   ))}
                 </div>
               </div>

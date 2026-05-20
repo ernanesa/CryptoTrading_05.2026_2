@@ -2,6 +2,7 @@ using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Infrastructure.Persistence;
 using CryptoTrading.Application.Services;
 using CryptoTrading.Domain.Entities;
+using CryptoTrading.Domain.Enums;
 using CryptoTrading.Api.Hubs;
 using CryptoTrading.Api.Services;
 
@@ -36,6 +37,20 @@ builder.Services.AddSingleton<IModelRegistry, ModelRegistry>();
 builder.Services.AddSingleton<IRagContextProvider, RagContextProvider>();
 builder.Services.AddSingleton<IExplanationService, ExplanationService>();
 builder.Services.AddSingleton<IIntelligenceSnapshotService, IntelligenceSnapshotService>();
+builder.Services.AddSingleton<MarketRegimeService>();
+builder.Services.AddSingleton<MarketHealthScore>();
+builder.Services.AddSingleton<ExecutionCostModel>();
+builder.Services.AddSingleton<AssetRankingService>();
+builder.Services.AddSingleton<StrategyPerformanceTracker>();
+builder.Services.AddSingleton<StrategyScoringService>();
+builder.Services.AddSingleton<StrategyHealthMonitor>();
+builder.Services.AddSingleton<MultiArmedBanditAllocator>();
+builder.Services.AddSingleton<AdaptivePortfolioAllocator>();
+builder.Services.AddSingleton<DynamicPositionSizingService>();
+builder.Services.AddSingleton<DynamicExitEngine>();
+builder.Services.AddSingleton<TradeAttributionService>();
+builder.Services.AddSingleton<WalkForwardEvaluator>();
+builder.Services.AddSingleton<AdaptiveStrategyOrchestrator>();
 builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();
 builder.Services.AddTransient<BinanceTestnetExecutor>();
@@ -89,6 +104,50 @@ app.MapGet("/api/intelligence/snapshot", async (
     return Results.Ok(snapshot);
 })
 .WithName("GetIntelligenceSnapshot");
+
+app.MapGet("/api/adaptive/recommendation", async (
+    string symbol,
+    string interval,
+    IFeatureStore store,
+    StrategyRegistry registry,
+    IIntelligenceSnapshotService intelligence,
+    AdaptiveStrategyOrchestrator orchestrator,
+    string? currentStrategyName,
+    int persistentAdvantageCycles = 2,
+    int windowHours = 48,
+    decimal portfolioValue = 10000m) =>
+{
+    var endUtc = DateTime.UtcNow;
+    var startUtc = endUtc.AddHours(-Math.Clamp(windowHours, 1, 720));
+    var points = await store.GetMarketDataPointsAsync(symbol, interval, startUtc, endUtc);
+    var features = points
+        .Select(p => p.Feature)
+        .Where(f => f != null)
+        .OrderBy(f => f.OpenTime)
+        .ToList();
+
+    if (features.Count == 0)
+    {
+        return Results.NotFound(new { Message = $"Nenhuma feature encontrada para orquestracao adaptativa de {symbol}/{interval}." });
+    }
+
+    var snapshot = intelligence.CreateSnapshot(symbol, interval, features);
+    var request = new AdaptiveOrchestrationRequest
+    {
+        Symbol = symbol,
+        Interval = interval,
+        Intelligence = snapshot,
+        StrategyNames = registry.GetAll().Select(s => s.Name).ToList(),
+        CurrentStrategyName = currentStrategyName,
+        PersistentAdvantageCycles = persistentAdvantageCycles,
+        PortfolioValue = portfolioValue,
+        RiskStatus = RiskStatus.Normal,
+        DataQualityPassed = true
+    };
+
+    return Results.Ok(orchestrator.Decide(request));
+})
+.WithName("GetAdaptiveRecommendation");
 
 // 1. Listar todas as estratégias registradas
 app.MapGet("/api/strategies", (StrategyRegistry registry) =>
