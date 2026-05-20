@@ -1,0 +1,50 @@
+name: Hardening Gates
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24'
+  CONFIGURATION: Release
+
+jobs:
+  hardening:
+    name: Tests, Dashboard and Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Run unit tests
+        run: dotnet test tests/UnitTests/CryptoTrading.UnitTests.csproj -c ${{ env.CONFIGURATION }} --verbosity normal
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Build dashboard
+        working-directory: dashboard
+        run: npm run build
+
+      - name: Run adaptive benchmark smoke
+        run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*' --iterations 3
+
+      - name: Run indicator benchmark smoke
+        run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Indicator*' --iterations 2

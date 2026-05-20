@@ -76,6 +76,10 @@ Benchmarks locais:
 dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*'
 ```
 
+CI de hardening:
+
+- `.github/workflows/hardening-gates.yml` valida build, testes, dashboard e smoke benchmarks.
+
 ## Documentação
 
 Toda a documentação inicial está em [`plans/`](./plans/README.md).

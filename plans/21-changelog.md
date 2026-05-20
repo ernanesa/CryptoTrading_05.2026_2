@@ -19,3 +19,4 @@
 | 2026-05-20 | Implementação completa da M7: Adaptive Strategy Orchestration — Control Plane adaptativo com ranking de ativo, scoring de estratégia, histerese/cooldown, alocação, sizing, exit policy, health monitor, bandit e dashboard |
 | 2026-05-20 | Implementação completa da M8: Hardening — gates de qualidade, endpoint `/api/hardening/report`, redator de secrets, chaos scenarios, benchmarks registrados, riscos conhecidos e dashboard |
 | 2026-05-20 | Adicionado harness local de benchmarks em `tools/benchmarks/CryptoTrading.Benchmarks` para IndicatorService e AdaptiveStrategyOrchestrator, com cenários opt-in de FeatureStore e AOT |
+| 2026-05-20 | Adicionado workflow `hardening-gates.yml` para validar build, testes, dashboard e smoke benchmarks no CI |

@@ -29,6 +29,17 @@ Registrar o fechamento da M8 com gates de qualidade, seguranca, performance, obs
 
 O projeto `tools/benchmarks/CryptoTrading.Benchmarks` executa os cenarios locais com `Stopwatch` e saida tabular. Ele evita dependencia de rede no ambiente de desenvolvimento atual e mantem comandos compativeis com uma migracao futura para BenchmarkDotNet.
 
+## Automacao CI
+
+O workflow `.github/workflows/hardening-gates.yml` executa os gates de hardening em `push` e `pull_request` para `main` e `develop`:
+
+- build e testes .NET em Release via `CryptoTrading.UnitTests`;
+- build do dashboard com `npm ci` + `npm run build`;
+- smoke benchmark de `AdaptiveStrategyOrchestrator.Decide`;
+- smoke benchmark de `IndicatorService.CalculateFeatures`.
+
+Os cenarios `FeatureStore.GetMarketDataPointsAsync` e `Api.NativeAot.Publish` seguem opt-in porque dependem, respectivamente, de fixture PostgreSQL e toolchain/AOT especifico.
+
 ## Chaos scenarios registrados
 
 - Missing market features: API retorna `NotFound` ou servicos rejeitam colecoes vazias.
