@@ -7,7 +7,9 @@ public class IntelligenceSnapshotServiceTests
 {
     private readonly IntelligenceSnapshotService _service = new(
         new RegimeDetectionService(),
-        new AnomalyDetectionService());
+        new AnomalyDetectionService(),
+        new FeatureExtractor(),
+        new VolatilityForecastService());
 
     [Fact]
     public void CreateSnapshot_TrendingFeatures_ReturnsVersionedSnapshot()
@@ -22,8 +24,11 @@ public class IntelligenceSnapshotServiceTests
         Assert.Equal("heuristic-m6-v1", snapshot.ModelVersion);
         Assert.Equal("score-v1", snapshot.ScoreVersion);
         Assert.Equal("FeatureStore.CandleFeature", snapshot.ScoreSource);
+        Assert.Equal("feature-vector/v1", snapshot.FeatureVector.Version);
+        Assert.Equal("volatility-heuristic-m6-v1", snapshot.VolatilityForecast.ModelVersion);
         Assert.Equal("TrendingUp", snapshot.MarketRegime);
         Assert.True(snapshot.RegimeConfidence > 0m);
+        Assert.True(snapshot.VolatilityForecast.HorizonMinutes > 0);
         Assert.NotEmpty(snapshot.Insights);
     }
 
@@ -36,6 +41,26 @@ public class IntelligenceSnapshotServiceTests
 
         Assert.True(snapshot.HasAnomaly);
         Assert.True(snapshot.AnomalyScore >= 70m);
+    }
+
+    [Fact]
+    public void CreateSnapshot_HighStressFeatures_ProducesElevatedVolatilityForecast()
+    {
+        var features = CreateFeatures(
+            ema21: 100m,
+            ema50: 100m,
+            adx: 12m,
+            volumeZScore: 4m,
+            imbalance: 1m,
+            returns: 0.03m,
+            atr14: 90m,
+            spread: 35m);
+
+        var snapshot = _service.CreateSnapshot("SOLUSDT", "5m", features);
+
+        Assert.Equal("Elevated", snapshot.VolatilityForecast.RiskBand);
+        Assert.True(snapshot.VolatilityForecast.ForecastScore >= 75m);
+        Assert.Equal(15, snapshot.VolatilityForecast.HorizonMinutes);
     }
 
     [Fact]
@@ -53,7 +78,9 @@ public class IntelligenceSnapshotServiceTests
         decimal adx,
         decimal volumeZScore,
         decimal imbalance = 0.1m,
-        decimal returns = 0.002m)
+        decimal returns = 0.002m,
+        decimal atr14 = 15m,
+        decimal spread = 2m)
     {
         var start = new DateTime(2026, 5, 20, 12, 0, 0, DateTimeKind.Utc);
 
@@ -66,9 +93,9 @@ public class IntelligenceSnapshotServiceTests
                 Ema21 = ema21,
                 Ema50 = ema50,
                 Adx = adx,
-                Atr14 = 15m,
+                Atr14 = i == 29 ? atr14 : 15m,
                 BbMiddle = 1000m,
-                Spread = 2m,
+                Spread = i == 29 ? spread : 2m,
                 VolumeZScore = i == 29 ? volumeZScore : 0.2m,
                 Imbalance = i == 29 ? imbalance : 0.1m,
                 Returns = i == 29 ? returns : 0.001m,

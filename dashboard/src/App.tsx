@@ -49,6 +49,25 @@ interface IntelligenceSnapshot {
   anomalyScore: number;
   volatilityScore: number;
   hasAnomaly: boolean;
+  featureVector: {
+    version: string;
+    source: string;
+    momentumScore: number;
+    trendScore: number;
+    volumePressureScore: number;
+    liquidityStressScore: number;
+    normalizedReturn: number;
+    atrPercent: number;
+  };
+  volatilityForecast: {
+    modelVersion: string;
+    scoreSource: string;
+    horizonMinutes: number;
+    forecastScore: number;
+    expectedAtrPercent: number;
+    confidence: number;
+    riskBand: string;
+  };
   insights: string[];
 }
 
@@ -101,9 +120,29 @@ export default function App() {
     anomalyScore: 18,
     volatilityScore: 34,
     hasAnomaly: false,
+    featureVector: {
+      version: 'feature-vector/v1',
+      source: 'FeatureStore.CandleFeature',
+      momentumScore: 52,
+      trendScore: 41,
+      volumePressureScore: 12,
+      liquidityStressScore: 8,
+      normalizedReturn: 0.12,
+      atrPercent: 1.1
+    },
+    volatilityForecast: {
+      modelVersion: 'volatility-heuristic-m6-v1',
+      scoreSource: 'FeatureStore.CandleFeature',
+      horizonMinutes: 3,
+      forecastScore: 34,
+      expectedAtrPercent: 1.1,
+      confidence: 100,
+      riskBand: 'Normal'
+    },
     insights: [
       'Regime detected as Sideways from FeatureStore indicators.',
-      'Anomaly score 18.00/100 using volume, imbalance, spread and returns.'
+      'Anomaly score 18.00/100 using volume, imbalance, spread and returns.',
+      'Volatility forecast is Normal for 3 minutes.'
     ]
   });
 
@@ -668,16 +707,25 @@ export default function App() {
                   </div>
                   <div className="intel-stat">
                     <span>Volatilidade</span>
-                    <strong>{intelligence.volatilityScore.toFixed(2)}</strong>
+                    <strong>{intelligence.volatilityForecast.forecastScore.toFixed(2)}</strong>
                   </div>
                   <div className="intel-stat">
-                    <span>Modelo</span>
-                    <strong>{intelligence.modelVersion}</strong>
+                    <span>Horizonte</span>
+                    <strong>{intelligence.volatilityForecast.horizonMinutes}m</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Tendencia</span>
+                    <strong>{intelligence.featureVector.trendScore.toFixed(2)}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Momentum</span>
+                    <strong>{intelligence.featureVector.momentumScore.toFixed(2)}</strong>
                   </div>
                 </div>
                 <div className="intel-meta">
-                  <span>{intelligence.scoreVersion}</span>
-                  <span>{intelligence.scoreSource}</span>
+                  <span>{intelligence.modelVersion}</span>
+                  <span>{intelligence.featureVector.version}</span>
+                  <span>{intelligence.volatilityForecast.modelVersion}</span>
                 </div>
                 <div className="intel-insights">
                   {intelligence.insights.slice(0, 3).map((insight, i) => (

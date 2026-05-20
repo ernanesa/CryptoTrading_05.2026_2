@@ -7,13 +7,19 @@ public class IntelligenceSnapshotService : IIntelligenceSnapshotService
 {
     private readonly IRegimeDetectionService _regimeDetection;
     private readonly IAnomalyDetectionService _anomalyDetection;
+    private readonly IFeatureExtractor _featureExtractor;
+    private readonly IVolatilityForecastService _volatilityForecast;
 
     public IntelligenceSnapshotService(
         IRegimeDetectionService regimeDetection,
-        IAnomalyDetectionService anomalyDetection)
+        IAnomalyDetectionService anomalyDetection,
+        IFeatureExtractor featureExtractor,
+        IVolatilityForecastService volatilityForecast)
     {
         _regimeDetection = regimeDetection;
         _anomalyDetection = anomalyDetection;
+        _featureExtractor = featureExtractor;
+        _volatilityForecast = volatilityForecast;
     }
 
     public IntelligenceSnapshot CreateSnapshot(string symbol, string interval, IReadOnlyList<CandleFeature> features)
@@ -36,7 +42,8 @@ public class IntelligenceSnapshotService : IIntelligenceSnapshotService
         var latest = features[^1];
         var regime = _regimeDetection.Detect(features);
         var anomalyScore = _anomalyDetection.CalculateScore(features);
-        var volatilityScore = CalculateVolatilityScore(latest);
+        var featureVector = _featureExtractor.Extract(features);
+        var volatilityForecast = _volatilityForecast.Forecast(interval, features, featureVector);
 
         return new IntelligenceSnapshot
         {
@@ -46,38 +53,28 @@ public class IntelligenceSnapshotService : IIntelligenceSnapshotService
             MarketRegime = regime,
             RegimeConfidence = _regimeDetection.CalculateConfidence(features, regime),
             AnomalyScore = anomalyScore,
-            VolatilityScore = volatilityScore,
+            VolatilityScore = volatilityForecast.ForecastScore,
+            FeatureVector = featureVector,
+            VolatilityForecast = volatilityForecast,
             HasAnomaly = anomalyScore >= 70m,
-            Insights = BuildInsights(regime, anomalyScore, volatilityScore, latest)
+            Insights = BuildInsights(regime, anomalyScore, volatilityForecast, latest)
         };
-    }
-
-    private static decimal CalculateVolatilityScore(CandleFeature feature)
-    {
-        if (feature.BbMiddle <= 0m)
-        {
-            return 0m;
-        }
-
-        var atrPressure = Math.Min(feature.Atr14 / feature.BbMiddle * 1000m, 100m);
-        var spreadPressure = Math.Min(feature.Spread / feature.BbMiddle * 1000m, 100m);
-
-        return Math.Round(Math.Max(atrPressure, spreadPressure), 2);
     }
 
     private static List<string> BuildInsights(
         string regime,
         decimal anomalyScore,
-        decimal volatilityScore,
+        VolatilityForecast volatilityForecast,
         CandleFeature latest)
     {
         var insights = new List<string>
         {
             $"Regime detected as {regime} from FeatureStore indicators.",
-            $"Anomaly score {anomalyScore:F2}/100 using volume, imbalance, spread and returns."
+            $"Anomaly score {anomalyScore:F2}/100 using volume, imbalance, spread and returns.",
+            $"Volatility forecast is {volatilityForecast.RiskBand} for {volatilityForecast.HorizonMinutes} minutes."
         };
 
-        if (volatilityScore >= 75m)
+        if (volatilityForecast.ForecastScore >= 75m)
         {
             insights.Add("Volatility context is elevated; downstream decisioning must remain gated by RiskEngine.");
         }

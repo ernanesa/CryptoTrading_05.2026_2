@@ -34,10 +34,10 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 - [x] fonte do score registrada;
 - [x] insights aparecem no dashboard;
 - [x] nenhum modelo bypassa RiskEngine;
-- [ ] FeatureExtractor;
+- [x] FeatureExtractor;
 - [x] AnomalyDetectionService inicial;
 - [x] RegimeDetectionService inicial;
-- [ ] VolatilityForecastService;
+- [x] VolatilityForecastService;
 - [ ] MetaLabelingService;
 - [ ] SentimentRiskService;
 - [ ] EventRiskClassifier;
@@ -51,6 +51,14 @@ RAG consultado: sim
 Consulta: M6 IntelligenceSnapshot RegimeDetectionService AnomalyDetectionService criterios aceite
 Contexto encontrado: componentes da Stage 06 e criterios de aceite do IntelligenceSnapshot.
 Impacto: implementacao inicial mantida como score heuristico versionado, sem bypass do RiskEngine.
+Data: 2026-05-20
+
+### Registro da atividade M6 FeatureExtractor e Volatilidade
+
+RAG consultado: sim
+Consulta: M6 FeatureExtractor VolatilityForecastService IntelligenceSnapshot FeatureStore criterios aceite
+Contexto encontrado: componentes pendentes da Stage 06 e criterio de features versionadas da Stage 01.
+Impacto: adicionados vetor de features versionado e forecast heuristico de volatilidade ao snapshot, mantendo score como contexto auxiliar.
 Data: 2026-05-20
 
 ## M7 — Adaptive Orchestration checklist

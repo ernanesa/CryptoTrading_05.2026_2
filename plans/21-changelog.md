@@ -14,3 +14,4 @@
 | 2026-05-20 | Implementação completa da M3: Paper Trading + Risk — Carteira virtual persistente, simulador de execuções em tempo real (PaperTradingExecutor), motor de regras de risco (RiskEngine), tabelas PostgreSQL dedicadas e auditoria de decisões completas |
 | 2026-05-20 | Implementação completa da M4: Binance Spot Testnet — Integração sandbox/real, ExchangeRuleValidator local (Tick/Step size, Min Qty/Notional), BinanceTestnetExecutor com suporte dry-run, OrderStatusSynchronizer de ordens abertas, mascaramento estrito de segredos e testes unitários robustos |
 | 2026-05-20 | Iniciada M6: Intelligence Layer — IntelligenceSnapshot versionado, RegimeDetectionService, AnomalyDetectionService, endpoint de snapshot e visualização no dashboard |
+| 2026-05-20 | Evolução da M6: FeatureExtractor versionado e VolatilityForecastService heurístico adicionados ao IntelligenceSnapshot e ao dashboard |

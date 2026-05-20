@@ -27,6 +27,8 @@ builder.Services.AddTransient<BacktestEngine>();
 builder.Services.AddSingleton<IRiskEngine, RiskEngine>();
 builder.Services.AddSingleton<IRegimeDetectionService, RegimeDetectionService>();
 builder.Services.AddSingleton<IAnomalyDetectionService, AnomalyDetectionService>();
+builder.Services.AddSingleton<IFeatureExtractor, FeatureExtractor>();
+builder.Services.AddSingleton<IVolatilityForecastService, VolatilityForecastService>();
 builder.Services.AddSingleton<IIntelligenceSnapshotService, IntelligenceSnapshotService>();
 builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();
