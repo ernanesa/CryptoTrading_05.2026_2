@@ -1,8 +1,6 @@
 # CryptoTrading 05.2026 v2
 
-Data-base do planejamento: **2026-05-20 UTC-03 / America/Maceio**.
-
-Este é o novo repositório oficial do projeto CryptoTrading. A partir deste ponto, este repositório é o único alvo de escrita e atualização. Os repositórios anteriores ficam apenas como leitura e referência histórica.
+Data-base do planejamento: **20/05/2026 UTC-03 / America/Maceio**.
 
 ## Visão
 
