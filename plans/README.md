@@ -30,9 +30,12 @@ Esta pasta contém o planejamento oficial do projeto `CryptoTrading_05.2026_2`.
 | 19 | `19-master-checklists.md` | Checklists globais |
 | 20 | `20-adr-index.md` | Índice de ADRs recomendados |
 | 21 | `21-changelog.md` | Registro de alterações |
+| 22 | `22-frontend-version-strategy.md` | Estratégia de versões para Vite, TypeScript e React |
+| 23 | `23-local-rag-qdrant-bge-m3-agent-workflow.md` | RAG local com Qdrant + BGE-M3 para Antigravity/Copilot |
+| 24 | `24-mcp-servers-analysis-and-installation.md` | Análise e instalação dos MCPs úteis |
 
 ## Regra de evolução
 
-Cada etapa deve entregar valor demonstrável: build, ingestão de dados, relatório de backtest, estratégia, regra de risco, painel, métrica, score, orquestração ou auditoria.
+Cada etapa deve entregar valor demonstrável: build, ingestão de dados, relatório de backtest, estratégia, regra de risco, painel, métrica, score, orquestração, RAG, MCP ou auditoria.
 
 Nada deve ser implementado sem plano, checklist e critério de aceite.
