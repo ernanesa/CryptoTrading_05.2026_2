@@ -21,5 +21,9 @@ public class CandleFeature
     public decimal BbMiddle { get; set; }
     public decimal BbLower { get; set; }
     public decimal Adx { get; set; }
+    public decimal Returns { get; set; }
+    public decimal VolumeZScore { get; set; }
+    public decimal Spread { get; set; }
+    public decimal Imbalance { get; set; }
     public DateTime CalculatedAt { get; set; }
 }

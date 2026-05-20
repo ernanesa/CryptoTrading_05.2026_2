@@ -7,7 +7,7 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 | Fase | Status |
 |---|---|
 | M0 Foundation | Completed |
-| M1 Market Data + Feature Store | In Progress |
+| M1 Market Data + Feature Store | Completed |
 | M2 Backtesting + Strategy Lab | Not started |
 | M3 Paper Trading + Risk | Not started |
 | M4 Binance Spot Testnet | Not started |

@@ -43,6 +43,7 @@ public class FeatureStore : IFeatureStore
             low NUMERIC(28, 8) NOT NULL,
             close NUMERIC(28, 8) NOT NULL,
             volume NUMERIC(28, 8) NOT NULL,
+            taker_buy_volume NUMERIC(28, 8) NOT NULL DEFAULT 0,
             close_time TIMESTAMP WITH TIME ZONE NOT NULL,
             CONSTRAINT uq_candles UNIQUE (symbol, interval, open_time)
         );
@@ -64,11 +65,21 @@ public class FeatureStore : IFeatureStore
             bb_middle NUMERIC(28, 8) NOT NULL,
             bb_lower NUMERIC(28, 8) NOT NULL,
             adx NUMERIC(28, 8) NOT NULL,
+            returns NUMERIC(28, 8) NOT NULL DEFAULT 0,
+            volume_z_score NUMERIC(28, 8) NOT NULL DEFAULT 0,
+            spread NUMERIC(28, 8) NOT NULL DEFAULT 0,
+            imbalance NUMERIC(28, 8) NOT NULL DEFAULT 0,
             calculated_at TIMESTAMP WITH TIME ZONE NOT NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles (symbol, interval, open_time DESC);
         CREATE INDEX IF NOT EXISTS idx_features_lookup ON candle_features (symbol, open_time DESC);
+
+        ALTER TABLE candles ADD COLUMN IF NOT EXISTS taker_buy_volume NUMERIC(28, 8) NOT NULL DEFAULT 0;
+        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS returns NUMERIC(28, 8) NOT NULL DEFAULT 0;
+        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS volume_z_score NUMERIC(28, 8) NOT NULL DEFAULT 0;
+        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS spread NUMERIC(28, 8) NOT NULL DEFAULT 0;
+        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS imbalance NUMERIC(28, 8) NOT NULL DEFAULT 0;
         ";
 
         using var conn = CreateConnection();
@@ -78,14 +89,15 @@ public class FeatureStore : IFeatureStore
     public async Task SaveCandlesAsync(IEnumerable<Candle> candles)
     {
         const string insertSql = @"
-        INSERT INTO candles (symbol, interval, open_time, open, high, low, close, volume, close_time)
-        VALUES (@Symbol, @Interval, @OpenTime, @Open, @High, @Low, @Close, @Volume, @CloseTime)
+        INSERT INTO candles (symbol, interval, open_time, open, high, low, close, volume, taker_buy_volume, close_time)
+        VALUES (@Symbol, @Interval, @OpenTime, @Open, @High, @Low, @Close, @Volume, @TakerBuyVolume, @CloseTime)
         ON CONFLICT (symbol, interval, open_time) DO UPDATE 
         SET open = EXCLUDED.open,
             high = EXCLUDED.high,
             low = EXCLUDED.low,
             close = EXCLUDED.close,
             volume = EXCLUDED.volume,
+            taker_buy_volume = EXCLUDED.taker_buy_volume,
             close_time = EXCLUDED.close_time
         RETURNING id;";
 
@@ -115,8 +127,8 @@ public class FeatureStore : IFeatureStore
         if (!features.Any()) return;
 
         const string insertSql = @"
-        INSERT INTO candle_features (candle_id, symbol, open_time, ema_9, ema_21, ema_50, ema_200, rsi_14, macd_value, macd_signal, macd_histogram, atr_14, bb_upper, bb_middle, bb_lower, adx, calculated_at)
-        VALUES (@CandleId, @Symbol, @OpenTime, @Ema9, @Ema21, @Ema50, @Ema200, @Rsi14, @MacdValue, @MacdSignal, @MacdHistogram, @Atr14, @BbUpper, @BbMiddle, @BbLower, @Adx, @CalculatedAt)
+        INSERT INTO candle_features (candle_id, symbol, open_time, ema_9, ema_21, ema_50, ema_200, rsi_14, macd_value, macd_signal, macd_histogram, atr_14, bb_upper, bb_middle, bb_lower, adx, returns, volume_z_score, spread, imbalance, calculated_at)
+        VALUES (@CandleId, @Symbol, @OpenTime, @Ema9, @Ema21, @Ema50, @Ema200, @Rsi14, @MacdValue, @MacdSignal, @MacdHistogram, @Atr14, @BbUpper, @BbMiddle, @BbLower, @Adx, @Returns, @VolumeZScore, @Spread, @Imbalance, @CalculatedAt)
         ON CONFLICT (candle_id) DO UPDATE
         SET ema_9 = EXCLUDED.ema_9,
             ema_21 = EXCLUDED.ema_21,
@@ -131,6 +143,10 @@ public class FeatureStore : IFeatureStore
             bb_middle = EXCLUDED.bb_middle,
             bb_lower = EXCLUDED.bb_lower,
             adx = EXCLUDED.adx,
+            returns = EXCLUDED.returns,
+            volume_z_score = EXCLUDED.volume_z_score,
+            spread = EXCLUDED.spread,
+            imbalance = EXCLUDED.imbalance,
             calculated_at = EXCLUDED.calculated_at;";
 
         using var conn = CreateConnection();

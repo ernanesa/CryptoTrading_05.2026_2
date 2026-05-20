@@ -19,8 +19,11 @@ public class IndicatorService
             return new List<CandleFeature>();
         }
 
+        // 0. Garantir ordenação cronológica estrita
+        var sortedCandles = candles.OrderBy(c => c.OpenTime).ToList();
+
         // 1. Converter para Quotes da biblioteca Skender.Indicators
-        var quotes = candles.Select(c => new Quote
+        var quotes = sortedCandles.Select(c => new Quote
         {
             Date = c.OpenTime,
             Open = c.Open,
@@ -28,9 +31,9 @@ public class IndicatorService
             Low = c.Low,
             Close = c.Close,
             Volume = c.Volume
-        }).OrderBy(q => q.Date).ToList();
+        }).ToList();
 
-        // 2. Executar cálculos matemáticos estruturados
+        // 2. Executar cálculos matemáticos estruturados (Skender)
         var ema9Results = quotes.GetEma(9).ToDictionary(r => r.Date);
         var ema21Results = quotes.GetEma(21).ToDictionary(r => r.Date);
         var ema50Results = quotes.GetEma(50).ToDictionary(r => r.Date);
@@ -43,8 +46,9 @@ public class IndicatorService
 
         var featuresList = new List<CandleFeature>();
 
-        foreach (var candle in candles)
+        for (var i = 0; i < sortedCandles.Count; i++)
         {
+            var candle = sortedCandles[i];
             var date = candle.OpenTime;
 
             // Auxiliar interno para conversão nula segura (warmup do indicador)
@@ -68,6 +72,43 @@ public class IndicatorService
 
             var adx = adxResults.TryGetValue(date, out var ad) ? GetValue(ad.Adx) : 0m;
 
+            // --- Cálculos matemáticos customizados para as features adicionais da M1 ---
+            
+            // 1. Returns: (Close - PrevClose) / PrevClose
+            decimal returns = 0m;
+            if (i > 0)
+            {
+                var prevClose = sortedCandles[i - 1].Close;
+                returns = prevClose != 0 ? (candle.Close - prevClose) / prevClose : 0m;
+            }
+
+            // 2. Spread: High - Low
+            decimal spread = candle.High - candle.Low;
+
+            // 3. Volume Z-Score (Rolling 20-period window)
+            decimal volumeZScore = 0m;
+            var startWindow = Math.Max(0, i - 19);
+            var windowSize = i - startWindow + 1;
+            if (windowSize > 0)
+            {
+                var windowVolumes = new List<double>();
+                for (var w = startWindow; w <= i; w++)
+                {
+                    windowVolumes.Add((double)sortedCandles[w].Volume);
+                }
+
+                var avgVolume = windowVolumes.Average();
+                var sumSq = windowVolumes.Sum(v => Math.Pow(v - avgVolume, 2));
+                var stdDev = Math.Sqrt(sumSq / windowSize);
+
+                volumeZScore = stdDev > 0 ? (decimal)(((double)candle.Volume - avgVolume) / stdDev) : 0m;
+            }
+
+            // 4. Imbalance: (2 * TakerBuyVolume - Volume) / Volume (Order Book Imbalance Simples proxy)
+            decimal imbalance = candle.Volume > 0 
+                ? (2 * candle.TakerBuyVolume - candle.Volume) / candle.Volume 
+                : 0m;
+
             featuresList.Add(new CandleFeature
             {
                 CandleId = candle.Id,
@@ -86,6 +127,10 @@ public class IndicatorService
                 BbMiddle = bbMiddle,
                 BbLower = bbLower,
                 Adx = adx,
+                Returns = returns,
+                VolumeZScore = volumeZScore,
+                Spread = spread,
+                Imbalance = imbalance,
                 CalculatedAt = DateTime.UtcNow
             });
         }

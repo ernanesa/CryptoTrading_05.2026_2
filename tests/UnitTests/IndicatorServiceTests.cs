@@ -23,6 +23,7 @@ public class IndicatorServiceTests
             var high = Math.Max(open, close) + (decimal)(random.NextDouble() * 50);
             var low = Math.Min(open, close) - (decimal)(random.NextDouble() * 50);
             var volume = 1000m + (decimal)(random.NextDouble() * 5000);
+            var takerBuyVolume = volume * (decimal)(0.4 + random.NextDouble() * 0.2); // ~40% a ~60%
 
             candles.Add(new Candle
             {
@@ -35,6 +36,7 @@ public class IndicatorServiceTests
                 Low = low,
                 Close = close,
                 Volume = volume,
+                TakerBuyVolume = takerBuyVolume,
                 CloseTime = baseTime.AddMinutes(i).AddSeconds(59)
             });
 
@@ -124,5 +126,25 @@ public class IndicatorServiceTests
             Assert.Equal(candles[i].Symbol, features[i].Symbol);
             Assert.Equal(candles[i].OpenTime, features[i].OpenTime);
         }
+    }
+
+    [Fact]
+    public void CalculateFeatures_ValidCandles_ProducesNewCustomFeatures()
+    {
+        var candles = CreateSampleCandles(50);
+        var features = _service.CalculateFeatures(candles);
+
+        // O primeiro candle não tem retorno (0m), mas a partir do segundo deve ter retorno
+        Assert.Equal(0m, features.First().Returns);
+        Assert.NotEqual(0m, features[1].Returns);
+
+        // Todos os candles devem ter spread positivo
+        Assert.All(features, f => Assert.True(f.Spread > 0m));
+
+        // Z-score de volume deve ser calculado
+        Assert.NotEqual(0m, features.Last().VolumeZScore);
+
+        // Imbalance deve estar entre -1 e 1
+        Assert.All(features, f => Assert.True(f.Imbalance >= -1m && f.Imbalance <= 1m));
     }
 }

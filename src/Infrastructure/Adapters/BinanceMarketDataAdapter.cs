@@ -62,6 +62,7 @@ public class BinanceMarketDataAdapter : IMarketDataAdapter
                 Low = k.LowPrice,
                 Close = k.ClosePrice,
                 Volume = k.Volume,
+                TakerBuyVolume = k.TakerBuyBaseVolume,
                 CloseTime = k.CloseTime
             });
         });

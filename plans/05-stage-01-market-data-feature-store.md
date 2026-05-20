@@ -41,9 +41,9 @@ Candles e features confiáveis para análise e simulação.
 
 ## Critérios de aceite
 
-- [ ] candles coletados;
-- [ ] candles persistidos;
-- [ ] indicadores calculados por biblioteca externa;
-- [ ] features versionadas;
-- [ ] falhas de rede tratadas;
-- [ ] dados ruins bloqueados pelo DataQualityGate.
+- [x] candles coletados;
+- [x] candles persistidos;
+- [x] indicadores calculados por biblioteca externa;
+- [x] features versionadas;
+- [x] falhas de rede tratadas;
+- [x] dados ruins bloqueados pelo DataQualityGate.

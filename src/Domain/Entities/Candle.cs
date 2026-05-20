@@ -14,5 +14,6 @@ public class Candle
     public decimal Low { get; set; }
     public decimal Close { get; set; }
     public decimal Volume { get; set; }
+    public decimal TakerBuyVolume { get; set; }
     public DateTime CloseTime { get; set; }
 }
