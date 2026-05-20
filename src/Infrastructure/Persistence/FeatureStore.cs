@@ -13,19 +13,22 @@ namespace CryptoTrading.Infrastructure.Persistence;
 public class FeatureStore : IFeatureStore
 {
     private readonly string _connectionString;
+    private readonly IMetricsService? _metrics;
 
-    public FeatureStore(IConfiguration configuration)
+    public FeatureStore(IConfiguration configuration, IMetricsService? metrics = null)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? "Host=localhost;Database=cryptotrading;Username=postgres;Password=postgres";
+        _metrics = metrics;
     }
 
     /// <summary>
     /// Construtor para testes unitários ou injeção direta de connection string.
     /// </summary>
-    public FeatureStore(string connectionString)
+    public FeatureStore(string connectionString, IMetricsService? metrics = null)
     {
         _connectionString = connectionString;
+        _metrics = metrics;
     }
 
     private IDbConnection CreateConnection() => new NpgsqlConnection(_connectionString);
@@ -155,6 +158,7 @@ public class FeatureStore : IFeatureStore
 
     public async Task SaveCandlesAsync(IEnumerable<Candle> candles)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         const string insertSql = @"
         INSERT INTO candles (symbol, interval, open_time, open, high, low, close, volume, taker_buy_volume, close_time)
         VALUES (@Symbol, @Interval, @OpenTime, @Open, @High, @Low, @Close, @Volume, @TakerBuyVolume, @CloseTime)
@@ -174,12 +178,20 @@ public class FeatureStore : IFeatureStore
 
         try
         {
-            foreach (var candle in candles)
+            var candleList = candles.ToList();
+            foreach (var candle in candleList)
             {
                 // Salva e atualiza o ID do objeto para vincular com as features posteriormente
                 candle.Id = await conn.QuerySingleAsync<long>(insertSql, candle, tx);
             }
             tx.Commit();
+            
+            sw.Stop();
+            if (_metrics != null)
+            {
+                _metrics.SetDbLatency(sw.Elapsed.TotalMilliseconds);
+                _metrics.IncrementCandles(candleList.Count);
+            }
         }
         catch
         {
@@ -191,8 +203,10 @@ public class FeatureStore : IFeatureStore
     public async Task SaveFeaturesAsync(IEnumerable<CandleFeature> features)
     {
         // Se a coleção estiver vazia, não executa nada
-        if (!features.Any()) return;
+        var featureList = features.ToList();
+        if (!featureList.Any()) return;
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         const string insertSql = @"
         INSERT INTO candle_features (candle_id, symbol, open_time, ema_9, ema_21, ema_50, ema_200, rsi_14, macd_value, macd_signal, macd_histogram, atr_14, bb_upper, bb_middle, bb_lower, adx, returns, volume_z_score, spread, imbalance, calculated_at)
         VALUES (@CandleId, @Symbol, @OpenTime, @Ema9, @Ema21, @Ema50, @Ema200, @Rsi14, @MacdValue, @MacdSignal, @MacdHistogram, @Atr14, @BbUpper, @BbMiddle, @BbLower, @Adx, @Returns, @VolumeZScore, @Spread, @Imbalance, @CalculatedAt)
@@ -222,8 +236,11 @@ public class FeatureStore : IFeatureStore
 
         try
         {
-            await conn.ExecuteAsync(insertSql, features, tx);
+            await conn.ExecuteAsync(insertSql, featureList, tx);
             tx.Commit();
+
+            sw.Stop();
+            _metrics?.SetDbLatency(sw.Elapsed.TotalMilliseconds);
         }
         catch
         {

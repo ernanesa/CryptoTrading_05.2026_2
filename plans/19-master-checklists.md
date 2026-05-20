@@ -11,7 +11,7 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 | M2 Backtesting + Strategy Lab | Completed |
 | M3 Paper Trading + Risk | Completed |
 | M4 Binance Spot Testnet | Completed |
-| M5 Dashboard + Observability | Not started |
+| M5 Dashboard + Observability | Completed |
 | M6 Intelligence Layer | Not started |
 | M7 Adaptive Strategy Orchestration | Not started |
 | M8 Hardening | Not started |

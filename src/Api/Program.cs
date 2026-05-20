@@ -2,10 +2,25 @@ using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Infrastructure.Persistence;
 using CryptoTrading.Application.Services;
 using CryptoTrading.Domain.Entities;
+using CryptoTrading.Api.Hubs;
+using CryptoTrading.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configuração de CORS para o painel frontend se conectar via WebSocket/SignalR
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Requerido pelo SignalR para transporte de websockets
+    });
+});
+
 // Configuração do ambiente e injeção de dependências do Core
+builder.Services.AddSingleton<IMetricsService, MetricsService>();
 builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
 builder.Services.AddSingleton<StrategyRegistry>();
 builder.Services.AddTransient<BacktestEngine>();
@@ -15,6 +30,8 @@ builder.Services.AddSingleton<ExchangeRuleValidator>();
 builder.Services.AddTransient<BinanceTestnetExecutor>();
 builder.Services.AddTransient<OrderStatusSynchronizer>();
 
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<MetricsBroadcaster>();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -24,7 +41,17 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseCors();
 app.UseHttpsRedirection();
+
+// Mapeamento do Hub de métricas do SignalR
+app.MapHub<MetricsHub>("/hubs/metrics");
+
+// Endpoints REST de Observabilidade e Saúde
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
+
+app.MapGet("/api/metrics", (IMetricsService metrics) => Results.Ok(metrics.GetSnapshot()))
+    .WithName("GetMetricsSnapshot");
 
 // 1. Listar todas as estratégias registradas
 app.MapGet("/api/strategies", (StrategyRegistry registry) =>

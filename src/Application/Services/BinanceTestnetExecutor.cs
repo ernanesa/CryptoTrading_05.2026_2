@@ -11,6 +11,7 @@ public class BinanceTestnetExecutor
     private readonly IFeatureStore _store;
     private readonly ExchangeRuleValidator _validator;
     private readonly ILogger<BinanceTestnetExecutor> _logger;
+    private readonly IMetricsService? _metrics;
     private readonly bool _isEnabled;
     private readonly string _apiKey;
     private readonly string _apiSecret;
@@ -19,11 +20,13 @@ public class BinanceTestnetExecutor
         IFeatureStore store,
         ExchangeRuleValidator validator,
         IConfiguration configuration,
-        ILogger<BinanceTestnetExecutor> _loggerInst)
+        ILogger<BinanceTestnetExecutor> _loggerInst,
+        IMetricsService? metrics = null)
     {
         _store = store;
         _validator = validator;
         _logger = _loggerInst;
+        _metrics = metrics;
 
         // Configurações do ambiente Binance Testnet
         _isEnabled = configuration.GetValue<bool>("Binance:Testnet:Enabled", false);
@@ -35,6 +38,8 @@ public class BinanceTestnetExecutor
 
     public async Task<TestnetOrder> ExecuteOrderAsync(TestnetOrder order)
     {
+        _metrics?.IncrementTestnetRequests();
+
         // 1. Gravar auditoria inicial
         var auditInit = new TestnetAuditLog
         {
