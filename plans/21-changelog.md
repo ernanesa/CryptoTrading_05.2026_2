@@ -12,4 +12,5 @@
 | 2026-05-20 | Adicionadas e validadas features adicionais de M1: Returns, Volume Z-Score, Spread e Imbalance (Taker Buy) no pipeline e banco de dados |
 | 2026-05-20 | Implementação completa da M2: Backtesting + Strategy Lab — Engine de backtest, gerenciador de posições, fee model, slippage model, performance analyzer, 4 estratégias de trading e endpoints HTTP de execução |
 | 2026-05-20 | Implementação completa da M3: Paper Trading + Risk — Carteira virtual persistente, simulador de execuções em tempo real (PaperTradingExecutor), motor de regras de risco (RiskEngine), tabelas PostgreSQL dedicadas e auditoria de decisões completas |
+| 2026-05-20 | Implementação completa da M4: Binance Spot Testnet — Integração sandbox/real, ExchangeRuleValidator local (Tick/Step size, Min Qty/Notional), BinanceTestnetExecutor com suporte dry-run, OrderStatusSynchronizer de ordens abertas, mascaramento estrito de segredos e testes unitários robustos |
 

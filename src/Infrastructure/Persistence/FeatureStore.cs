@@ -113,6 +113,40 @@ public class FeatureStore : IFeatureStore
         INSERT INTO paper_wallet (symbol, free, locked, updated_at)
         VALUES ('USDT', 10000.0, 0.0, NOW())
         ON CONFLICT (symbol) DO NOTHING;
+
+        CREATE TABLE IF NOT EXISTS exchange_filter_info (
+            symbol VARCHAR(20) PRIMARY KEY,
+            tick_size NUMERIC(28, 8) NOT NULL,
+            step_size NUMERIC(28, 8) NOT NULL,
+            min_qty NUMERIC(28, 8) NOT NULL,
+            max_qty NUMERIC(28, 8) NOT NULL,
+            min_notional NUMERIC(28, 8) NOT NULL,
+            price_precision INT NOT NULL,
+            quantity_precision INT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS testnet_orders (
+            id BIGSERIAL PRIMARY KEY,
+            symbol VARCHAR(20) NOT NULL,
+            client_order_id VARCHAR(50) UNIQUE NOT NULL,
+            binance_order_id VARCHAR(50),
+            side VARCHAR(10) NOT NULL,
+            type VARCHAR(10) NOT NULL,
+            price NUMERIC(28, 8) NOT NULL,
+            quantity NUMERIC(28, 8) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS testnet_audit_logs (
+            id BIGSERIAL PRIMARY KEY,
+            symbol VARCHAR(20) NOT NULL,
+            action VARCHAR(50) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            details VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL
+        );
         ";
 
         using var conn = CreateConnection();
@@ -306,5 +340,92 @@ public class FeatureStore : IFeatureStore
 
         using var conn = CreateConnection();
         await conn.ExecuteAsync(sql);
+    }
+
+    public async Task SaveExchangeFilterInfoAsync(ExchangeFilterInfo filter)
+    {
+        const string sql = @"
+        INSERT INTO exchange_filter_info (symbol, tick_size, step_size, min_qty, max_qty, min_notional, price_precision, quantity_precision) 
+        VALUES (@Symbol, @TickSize, @StepSize, @MinQty, @MaxQty, @MinNotional, @PricePrecision, @QuantityPrecision) 
+        ON CONFLICT (symbol) DO UPDATE 
+        SET tick_size = EXCLUDED.tick_size, 
+            step_size = EXCLUDED.step_size, 
+            min_qty = EXCLUDED.min_qty, 
+            max_qty = EXCLUDED.max_qty, 
+            min_notional = EXCLUDED.min_notional, 
+            price_precision = EXCLUDED.price_precision, 
+            quantity_precision = EXCLUDED.quantity_precision;";
+
+        using var conn = CreateConnection();
+        await conn.ExecuteAsync(sql, filter);
+    }
+
+    public async Task<ExchangeFilterInfo?> GetExchangeFilterInfoAsync(string symbol)
+    {
+        const string sql = @"
+        SELECT symbol, tick_size AS TickSize, step_size AS StepSize, min_qty AS MinQty, max_qty AS MaxQty, min_notional AS MinNotional, price_precision AS PricePrecision, quantity_precision AS QuantityPrecision 
+        FROM exchange_filter_info 
+        WHERE symbol = @Symbol;";
+
+        using var conn = CreateConnection();
+        return await conn.QueryFirstOrDefaultAsync<ExchangeFilterInfo>(sql, new { Symbol = symbol.ToUpper() });
+    }
+
+    public async Task SaveTestnetOrderAsync(TestnetOrder order)
+    {
+        const string sql = @"
+        INSERT INTO testnet_orders (symbol, client_order_id, binance_order_id, side, type, price, quantity, status, created_at, updated_at) 
+        VALUES (@Symbol, @ClientOrderId, @BinanceOrderId, @Side, @Type, @Price, @Quantity, @Status, @CreatedAt, @UpdatedAt) 
+        ON CONFLICT (client_order_id) DO UPDATE 
+        SET binance_order_id = EXCLUDED.binance_order_id, 
+            status = EXCLUDED.status, 
+            updated_at = EXCLUDED.updated_at;";
+
+        using var conn = CreateConnection();
+        await conn.ExecuteAsync(sql, order);
+    }
+
+    public async Task<TestnetOrder?> GetTestnetOrderAsync(string clientOrderId)
+    {
+        const string sql = @"
+        SELECT id, symbol, client_order_id AS ClientOrderId, binance_order_id AS BinanceOrderId, side, type, price, quantity, status, created_at AS CreatedAt, updated_at AS UpdatedAt 
+        FROM testnet_orders 
+        WHERE client_order_id = @ClientOrderId;";
+
+        using var conn = CreateConnection();
+        return await conn.QueryFirstOrDefaultAsync<TestnetOrder>(sql, new { ClientOrderId = clientOrderId });
+    }
+
+    public async Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync()
+    {
+        const string sql = @"
+        SELECT id, symbol, client_order_id AS ClientOrderId, binance_order_id AS BinanceOrderId, side, type, price, quantity, status, created_at AS CreatedAt, updated_at AS UpdatedAt 
+        FROM testnet_orders 
+        WHERE status IN ('NEW', 'PARTIALLY_FILLED');";
+
+        using var conn = CreateConnection();
+        return await conn.QueryAsync<TestnetOrder>(sql);
+    }
+
+    public async Task SaveTestnetAuditLogAsync(TestnetAuditLog log)
+    {
+        const string sql = @"
+        INSERT INTO testnet_audit_logs (symbol, action, status, details, created_at) 
+        VALUES (@Symbol, @Action, @Status, @Details, @CreatedAt);";
+
+        using var conn = CreateConnection();
+        await conn.ExecuteAsync(sql, log);
+    }
+
+    public async Task<IEnumerable<TestnetAuditLog>> GetTestnetAuditLogsAsync(int limit = 100)
+    {
+        const string sql = @"
+        SELECT id, symbol, action, status, details, created_at AS CreatedAt 
+        FROM testnet_audit_logs 
+        ORDER BY created_at DESC 
+        LIMIT @Limit;";
+
+        using var conn = CreateConnection();
+        return await conn.QueryAsync<TestnetAuditLog>(sql, new { Limit = limit });
     }
 }

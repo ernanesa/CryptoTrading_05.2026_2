@@ -67,4 +67,39 @@ public interface IFeatureStore
     /// Limpa os dados de simulação (Paper Trading) para reinicialização.
     /// </summary>
     Task ClearPaperTradingDataAsync();
+
+    /// <summary>
+    /// Salva ou atualiza as regras de filtro da exchange para um par.
+    /// </summary>
+    Task SaveExchangeFilterInfoAsync(ExchangeFilterInfo filter);
+
+    /// <summary>
+    /// Resgata as regras de filtro da exchange salvas para um par.
+    /// </summary>
+    Task<ExchangeFilterInfo?> GetExchangeFilterInfoAsync(string symbol);
+
+    /// <summary>
+    /// Salva ou atualiza o status de uma ordem da Testnet.
+    /// </summary>
+    Task SaveTestnetOrderAsync(TestnetOrder order);
+
+    /// <summary>
+    /// Resgata uma ordem da Testnet através do seu clientOrderId.
+    /// </summary>
+    Task<TestnetOrder?> GetTestnetOrderAsync(string clientOrderId);
+
+    /// <summary>
+    /// Resgata ordens ativas da Testnet para fins de sincronização de status.
+    /// </summary>
+    Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync();
+
+    /// <summary>
+    /// Registra uma auditoria de transação da Testnet.
+    /// </summary>
+    Task SaveTestnetAuditLogAsync(TestnetAuditLog log);
+
+    /// <summary>
+    /// Resgata logs de auditoria da Testnet de forma ordenada.
+    /// </summary>
+    Task<IEnumerable<TestnetAuditLog>> GetTestnetAuditLogsAsync(int limit = 100);
 }

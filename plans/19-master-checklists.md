@@ -10,7 +10,7 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 | M1 Market Data + Feature Store | Completed |
 | M2 Backtesting + Strategy Lab | Completed |
 | M3 Paper Trading + Risk | Completed |
-| M4 Binance Spot Testnet | Not started |
+| M4 Binance Spot Testnet | Completed |
 | M5 Dashboard + Observability | Not started |
 | M6 Intelligence Layer | Not started |
 | M7 Adaptive Strategy Orchestration | Not started |

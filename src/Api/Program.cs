@@ -11,6 +11,9 @@ builder.Services.AddSingleton<StrategyRegistry>();
 builder.Services.AddTransient<BacktestEngine>();
 builder.Services.AddSingleton<IRiskEngine, RiskEngine>();
 builder.Services.AddTransient<PaperTradeExecutor>();
+builder.Services.AddSingleton<ExchangeRuleValidator>();
+builder.Services.AddTransient<BinanceTestnetExecutor>();
+builder.Services.AddTransient<OrderStatusSynchronizer>();
 
 builder.Services.AddOpenApi();
 
@@ -189,5 +192,51 @@ app.MapPost("/api/paper/process-signal", async (
     return Results.Ok(audit);
 })
 .WithName("ProcessPaperSignal");
+
+// 9. Binance Testnet — Criar ou atualizar filtros da exchange para validação local
+app.MapPost("/api/testnet/filters", async (ExchangeFilterInfo filter, IFeatureStore store) =>
+{
+    await store.SaveExchangeFilterInfoAsync(filter);
+    return Results.Ok(new { Message = $"Regras de filtro para {filter.Symbol} atualizadas com sucesso.", Filter = filter });
+})
+.WithName("SaveExchangeFilters");
+
+// 10. Binance Testnet — Obter regras de filtro de um par
+app.MapGet("/api/testnet/filters/{symbol}", async (string symbol, IFeatureStore store) =>
+{
+    var filter = await store.GetExchangeFilterInfoAsync(symbol);
+    return filter != null ? Results.Ok(filter) : Results.NotFound(new { Message = $"Filtro para {symbol} não encontrado." });
+})
+.WithName("GetExchangeFilters");
+
+// 11. Binance Testnet — Enviar uma ordem de trade em sandbox (ou real se habilitado)
+app.MapPost("/api/testnet/order", async (TestnetOrder order, BinanceTestnetExecutor executor) =>
+{
+    order.ClientOrderId = $"CLIENT_{Guid.NewGuid().ToString().Substring(0, 10).ToUpper()}";
+    order.CreatedAt = DateTime.UtcNow;
+    order.UpdatedAt = DateTime.UtcNow;
+
+    var result = await executor.ExecuteOrderAsync(order);
+    return result.Status == "REJECTED" 
+        ? Results.BadRequest(new { Message = "Ordem rejeitada.", Result = result })
+        : Results.Ok(result);
+})
+.WithName("SubmitTestnetOrder");
+
+// 12. Binance Testnet — Sincronizar ordens abertas (NEW ou PARTIALLY_FILLED)
+app.MapPost("/api/testnet/sync", async (OrderStatusSynchronizer synchronizer) =>
+{
+    int updatedCount = await synchronizer.SynchronizeActiveOrdersAsync();
+    return Results.Ok(new { Message = $"Sincronização concluída com sucesso.", OrdersUpdated = updatedCount });
+})
+.WithName("SyncTestnetOrders");
+
+// 13. Binance Testnet — Obter histórico de auditoria de conexões/ordens da Testnet
+app.MapGet("/api/testnet/audits", async (IFeatureStore store, int limit = 100) =>
+{
+    var logs = await store.GetTestnetAuditLogsAsync(limit);
+    return Results.Ok(logs);
+})
+.WithName("GetTestnetAudits");
 
 app.Run();

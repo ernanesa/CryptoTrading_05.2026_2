@@ -31,9 +31,9 @@ Fluxo realista de validação de ordens testnet com filtros da exchange, auditor
 
 ## Critérios de aceite
 
-- [ ] payload inválido bloqueado localmente;
-- [ ] Testnet pode ser desligada por configuração;
-- [ ] secrets não aparecem em logs;
-- [ ] falhas de API tratadas;
-- [ ] status sincronizado;
-- [ ] auditoria criada.
+- [x] payload inválido bloqueado localmente;
+- [x] Testnet pode ser desligada por configuração;
+- [x] secrets não aparecem em logs;
+- [x] falhas de API tratadas;
+- [x] status sincronizado;
+- [x] auditoria criada.

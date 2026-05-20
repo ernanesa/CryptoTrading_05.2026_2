@@ -55,6 +55,14 @@ public class PaperTradingTests
             Balances.Add(new WalletBalance { Symbol = "USDT", Free = 10000m, Locked = 0m, UpdatedAt = DateTime.UtcNow });
             return Task.CompletedTask;
         }
+
+        public Task SaveExchangeFilterInfoAsync(ExchangeFilterInfo filter) => Task.CompletedTask;
+        public Task<ExchangeFilterInfo?> GetExchangeFilterInfoAsync(string symbol) => Task.FromResult<ExchangeFilterInfo?>(null);
+        public Task SaveTestnetOrderAsync(TestnetOrder order) => Task.CompletedTask;
+        public Task<TestnetOrder?> GetTestnetOrderAsync(string clientOrderId) => Task.FromResult<TestnetOrder?>(null);
+        public Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync() => Task.FromResult(Enumerable.Empty<TestnetOrder>());
+        public Task SaveTestnetAuditLogAsync(TestnetAuditLog log) => Task.CompletedTask;
+        public Task<IEnumerable<TestnetAuditLog>> GetTestnetAuditLogsAsync(int limit = 100) => Task.FromResult(Enumerable.Empty<TestnetAuditLog>());
     }
 
     [Fact]
