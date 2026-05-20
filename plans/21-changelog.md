@@ -11,4 +11,5 @@
 | 2026-05-20 | Infraestrutura Docker Compose configurada: PostgreSQL 16 Alpine + Qdrant v1.18 em containers gerenciados |
 | 2026-05-20 | Adicionadas e validadas features adicionais de M1: Returns, Volume Z-Score, Spread e Imbalance (Taker Buy) no pipeline e banco de dados |
 | 2026-05-20 | Implementação completa da M2: Backtesting + Strategy Lab — Engine de backtest, gerenciador de posições, fee model, slippage model, performance analyzer, 4 estratégias de trading e endpoints HTTP de execução |
+| 2026-05-20 | Implementação completa da M3: Paper Trading + Risk — Carteira virtual persistente, simulador de execuções em tempo real (PaperTradingExecutor), motor de regras de risco (RiskEngine), tabelas PostgreSQL dedicadas e auditoria de decisões completas |
 

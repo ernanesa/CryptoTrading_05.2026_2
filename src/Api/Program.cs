@@ -9,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
 builder.Services.AddSingleton<StrategyRegistry>();
 builder.Services.AddTransient<BacktestEngine>();
+builder.Services.AddSingleton<IRiskEngine, RiskEngine>();
+builder.Services.AddTransient<PaperTradeExecutor>();
 
 builder.Services.AddOpenApi();
 
@@ -126,5 +128,66 @@ app.MapGet("/api/backtest/run-all", async (
     return Results.Ok(comparativeReports);
 })
 .WithName("RunAllBacktests");
+
+// 4. Paper Trading — Estado da carteira virtual
+app.MapGet("/api/paper/wallet", async (IFeatureStore store) =>
+{
+    var balances = await store.GetWalletBalancesAsync();
+    return Results.Ok(balances);
+})
+.WithName("GetPaperWallet");
+
+// 5. Paper Trading — Histórico de trades simulados
+app.MapGet("/api/paper/trades", async (string symbol, IFeatureStore store, int limit = 50) =>
+{
+    var trades = await store.GetPaperTradesAsync(symbol, limit);
+    return Results.Ok(trades);
+})
+.WithName("GetPaperTrades");
+
+// 6. Paper Trading — Histórico de auditorias do RiskEngine
+app.MapGet("/api/paper/audits", async (IFeatureStore store, int limit = 100) =>
+{
+    var audits = await store.GetDecisionAuditsAsync(limit);
+    return Results.Ok(audits);
+})
+.WithName("GetDecisionAudits");
+
+// 7. Paper Trading — Resetar simulação (volta ao estado inicial com $10.000 USDT)
+app.MapDelete("/api/paper/reset", async (IFeatureStore store) =>
+{
+    await store.ClearPaperTradingDataAsync();
+    return Results.Ok(new { Message = "Simulação de Paper Trading reinicializada. Carteira: $10.000 USDT." });
+})
+.WithName("ResetPaperTrading");
+
+// 8. Paper Trading — Disparar um sinal manualmente para uma estratégia em tempo real
+app.MapPost("/api/paper/process-signal", async (
+    string strategyName,
+    string symbol,
+    string interval,
+    IFeatureStore store,
+    StrategyRegistry registry,
+    PaperTradeExecutor executor) =>
+{
+    var strategy = registry.Get(strategyName);
+    if (strategy == null)
+    {
+        return Results.NotFound(new { Message = $"Estratégia '{strategyName}' não encontrada." });
+    }
+
+    var now = DateTime.UtcNow;
+    var dataPoints = await store.GetMarketDataPointsAsync(symbol, interval, now.AddHours(-2), now);
+    var latest = dataPoints.MaxBy(d => d.Candle.OpenTime);
+
+    if (latest == null)
+    {
+        return Results.BadRequest(new { Message = $"Nenhum dado recente encontrado no banco para {symbol}/{interval}." });
+    }
+
+    var audit = await executor.ProcessSignalAsync(strategy, latest);
+    return Results.Ok(audit);
+})
+.WithName("ProcessPaperSignal");
 
 app.Run();

@@ -34,9 +34,9 @@ Validar decisões em fluxo contínuo antes da Testnet.
 
 ## Critérios de aceite
 
-- [ ] sinais passam pelo RiskEngine;
-- [ ] ordens simuladas registradas;
-- [ ] PnL simulado calculado;
-- [ ] rejeições explicadas;
-- [ ] halted mode bloqueia novas ações;
-- [ ] dashboard/logs mostram status.
+- [x] sinais passam pelo RiskEngine;
+- [x] ordens simuladas registradas;
+- [x] PnL simulado calculado;
+- [x] rejeições explicadas;
+- [x] halted mode bloqueia novas ações;
+- [x] dashboard/logs mostram status.

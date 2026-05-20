@@ -32,4 +32,39 @@ public interface IFeatureStore
     /// Resgata os MarketDataPoints (candles + features) salvos no banco de dados para um determinado par e intervalo temporal.
     /// </summary>
     Task<IEnumerable<MarketDataPoint>> GetMarketDataPointsAsync(string symbol, string interval, DateTime startTime, DateTime endTime);
+
+    /// <summary>
+    /// Salva ou atualiza o saldo de um ativo na carteira virtual.
+    /// </summary>
+    Task SaveWalletBalanceAsync(WalletBalance balance);
+
+    /// <summary>
+    /// Resgata os saldos de todos os ativos da carteira virtual.
+    /// </summary>
+    Task<IEnumerable<WalletBalance>> GetWalletBalancesAsync();
+
+    /// <summary>
+    /// Registra um novo trade executado na simulação (Paper Trading).
+    /// </summary>
+    Task SavePaperTradeAsync(PaperTrade trade);
+
+    /// <summary>
+    /// Resgata os trades executados na simulação de forma ordenada.
+    /// </summary>
+    Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100);
+
+    /// <summary>
+    /// Grava uma auditoria de decisão de trading (sinal aceito ou rejeitado e por qual regra).
+    /// </summary>
+    Task SaveDecisionAuditAsync(DecisionAudit audit);
+
+    /// <summary>
+    /// Resgata o histórico de auditoria de decisões do RiskEngine e estratégias.
+    /// </summary>
+    Task<IEnumerable<DecisionAudit>> GetDecisionAuditsAsync(int limit = 100);
+
+    /// <summary>
+    /// Limpa os dados de simulação (Paper Trading) para reinicialização.
+    /// </summary>
+    Task ClearPaperTradingDataAsync();
 }

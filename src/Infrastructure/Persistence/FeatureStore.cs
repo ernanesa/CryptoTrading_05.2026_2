@@ -80,6 +80,39 @@ public class FeatureStore : IFeatureStore
         ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS volume_z_score NUMERIC(28, 8) NOT NULL DEFAULT 0;
         ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS spread NUMERIC(28, 8) NOT NULL DEFAULT 0;
         ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS imbalance NUMERIC(28, 8) NOT NULL DEFAULT 0;
+
+        CREATE TABLE IF NOT EXISTS paper_wallet (
+            symbol VARCHAR(20) PRIMARY KEY,
+            free NUMERIC(28, 8) NOT NULL,
+            locked NUMERIC(28, 8) NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS paper_trades (
+            id BIGSERIAL PRIMARY KEY,
+            symbol VARCHAR(20) NOT NULL,
+            type VARCHAR(10) NOT NULL,
+            price NUMERIC(28, 8) NOT NULL,
+            quantity NUMERIC(28, 8) NOT NULL,
+            fee NUMERIC(28, 8) NOT NULL,
+            pnl NUMERIC(28, 8) NOT NULL,
+            executed_at TIMESTAMP WITH TIME ZONE NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS decision_audits (
+            id BIGSERIAL PRIMARY KEY,
+            symbol VARCHAR(20) NOT NULL,
+            strategy_name VARCHAR(50) NOT NULL,
+            signal_type VARCHAR(10) NOT NULL,
+            price NUMERIC(28, 8) NOT NULL,
+            timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+            decision VARCHAR(20) NOT NULL,
+            reason VARCHAR(255) NOT NULL
+        );
+
+        INSERT INTO paper_wallet (symbol, free, locked, updated_at)
+        VALUES ('USDT', 10000.0, 0.0, NOW())
+        ON CONFLICT (symbol) DO NOTHING;
         ";
 
         using var conn = CreateConnection();
@@ -198,5 +231,80 @@ public class FeatureStore : IFeatureStore
         );
 
         return points;
+    }
+
+    public async Task SaveWalletBalanceAsync(WalletBalance balance)
+    {
+        const string sql = @"
+        INSERT INTO paper_wallet (symbol, free, locked, updated_at) 
+        VALUES (@Symbol, @Free, @Locked, @UpdatedAt) 
+        ON CONFLICT (symbol) DO UPDATE 
+        SET free = EXCLUDED.free, locked = EXCLUDED.locked, updated_at = EXCLUDED.updated_at;";
+
+        using var conn = CreateConnection();
+        await conn.ExecuteAsync(sql, balance);
+    }
+
+    public async Task<IEnumerable<WalletBalance>> GetWalletBalancesAsync()
+    {
+        const string sql = "SELECT symbol, free, locked, updated_at AS UpdatedAt FROM paper_wallet;";
+        using var conn = CreateConnection();
+        return await conn.QueryAsync<WalletBalance>(sql);
+    }
+
+    public async Task SavePaperTradeAsync(PaperTrade trade)
+    {
+        const string sql = @"
+        INSERT INTO paper_trades (symbol, type, price, quantity, fee, pnl, executed_at) 
+        VALUES (@Symbol, @Type, @Price, @Quantity, @Fee, @PnL, @ExecutedAt);";
+
+        using var conn = CreateConnection();
+        await conn.ExecuteAsync(sql, trade);
+    }
+
+    public async Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100)
+    {
+        const string sql = @"
+        SELECT id, symbol, type, price, quantity, fee, pnl, executed_at AS ExecutedAt 
+        FROM paper_trades 
+        WHERE symbol = @Symbol 
+        ORDER BY executed_at DESC 
+        LIMIT @Limit;";
+
+        using var conn = CreateConnection();
+        return await conn.QueryAsync<PaperTrade>(sql, new { Symbol = symbol, Limit = limit });
+    }
+
+    public async Task SaveDecisionAuditAsync(DecisionAudit audit)
+    {
+        const string sql = @"
+        INSERT INTO decision_audits (symbol, strategy_name, signal_type, price, timestamp, decision, reason) 
+        VALUES (@Symbol, @StrategyName, @SignalType, @Price, @Timestamp, @Decision, @Reason);";
+
+        using var conn = CreateConnection();
+        await conn.ExecuteAsync(sql, audit);
+    }
+
+    public async Task<IEnumerable<DecisionAudit>> GetDecisionAuditsAsync(int limit = 100)
+    {
+        const string sql = @"
+        SELECT id, symbol, strategy_name AS StrategyName, signal_type AS SignalType, price, timestamp, decision, reason 
+        FROM decision_audits 
+        ORDER BY timestamp DESC 
+        LIMIT @Limit;";
+
+        using var conn = CreateConnection();
+        return await conn.QueryAsync<DecisionAudit>(sql, new { Limit = limit });
+    }
+
+    public async Task ClearPaperTradingDataAsync()
+    {
+        const string sql = @"
+        DELETE FROM paper_trades; 
+        DELETE FROM decision_audits; 
+        UPDATE paper_wallet SET free = 10000.0, locked = 0.0, updated_at = NOW();";
+
+        using var conn = CreateConnection();
+        await conn.ExecuteAsync(sql);
     }
 }
