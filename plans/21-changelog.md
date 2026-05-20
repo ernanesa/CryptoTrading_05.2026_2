@@ -17,3 +17,4 @@
 | 2026-05-20 | Evolução da M6: FeatureExtractor versionado e VolatilityForecastService heurístico adicionados ao IntelligenceSnapshot e ao dashboard |
 | 2026-05-20 | Implementação completa da M6: Intelligence Layer — MetaLabeling, SentimentRisk, EventRisk, ModelRegistry, RagContext e Explanation integrados ao snapshot e dashboard |
 | 2026-05-20 | Implementação completa da M7: Adaptive Strategy Orchestration — Control Plane adaptativo com ranking de ativo, scoring de estratégia, histerese/cooldown, alocação, sizing, exit policy, health monitor, bandit e dashboard |
+| 2026-05-20 | Implementação completa da M8: Hardening — gates de qualidade, endpoint `/api/hardening/report`, redator de secrets, chaos scenarios, benchmarks registrados, riscos conhecidos e dashboard |

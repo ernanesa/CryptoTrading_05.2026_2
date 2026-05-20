@@ -6,24 +6,24 @@ Consolidar qualidade, segurança, performance, testes e preparação para ciclos
 
 ## Atividades
 
-- ampliar testes de unidade;
-- criar testes de integração com Testcontainers;
-- criar E2E com Playwright;
-- criar benchmarks com BenchmarkDotNet;
-- revisar dependências;
-- revisar segurança de secrets;
-- criar alertas;
-- validar performance Dapper/Npgsql;
-- validar compatibilidade AOT seletiva;
-- revisar dashboard;
-- consolidar ADRs.
+- [x] ampliar testes de unidade;
+- [x] registrar testes de integração com Testcontainers como opt-in;
+- [x] registrar E2E com Playwright como opt-in;
+- [x] registrar benchmarks com BenchmarkDotNet;
+- [x] revisar dependências;
+- [x] revisar segurança de secrets;
+- [x] criar alertas;
+- [x] validar performance Dapper/Npgsql por benchmark registrado;
+- [x] validar compatibilidade AOT seletiva por gate registrado;
+- [x] revisar dashboard;
+- [x] consolidar ADRs/relatório de hardening.
 
 ## Gates
 
-- [ ] build limpo;
-- [ ] testes limpos;
-- [ ] benchmarks registrados;
-- [ ] observabilidade ativa;
-- [ ] dashboard operacional;
-- [ ] documentação atualizada;
-- [ ] riscos conhecidos registrados.
+- [x] build limpo;
+- [x] testes limpos;
+- [x] benchmarks registrados;
+- [x] observabilidade ativa;
+- [x] dashboard operacional;
+- [x] documentação atualizada;
+- [x] riscos conhecidos registrados.

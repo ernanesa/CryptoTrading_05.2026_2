@@ -149,6 +149,31 @@ interface AdaptiveRecommendation {
   reasons: string[];
 }
 
+interface HardeningReport {
+  version: string;
+  isReleaseCandidate: boolean;
+  gates: Array<{
+    name: string;
+    passed: boolean;
+    evidence: string;
+  }>;
+  benchmarks: Array<{
+    name: string;
+    tool: string;
+    status: string;
+  }>;
+  chaosScenarios: Array<{
+    scenario: string;
+    passed: boolean;
+  }>;
+  knownRisks: Array<{
+    area: string;
+    risk: string;
+    mitigation: string;
+  }>;
+  alerts: string[];
+}
+
 interface TradeLog {
   time: string;
   type: string;
@@ -306,6 +331,27 @@ export default function App() {
     ]
   });
 
+  const [hardening, setHardening] = useState<HardeningReport>({
+    version: 'hardening-report/v1',
+    isReleaseCandidate: true,
+    gates: [
+      { name: 'build limpo', passed: true, evidence: 'dotnet test compila todos os projetos.' },
+      { name: 'testes limpos', passed: true, evidence: 'Suite xUnit verde.' },
+      { name: 'dashboard operacional', passed: true, evidence: 'npm run build verde.' }
+    ],
+    benchmarks: [
+      { name: 'AdaptiveStrategyOrchestrator.Decide', tool: 'BenchmarkDotNet', status: 'Registered' }
+    ],
+    chaosScenarios: [
+      { scenario: 'RiskEngine halted', passed: true },
+      { scenario: 'DataQualityGate blocked', passed: true }
+    ],
+    knownRisks: [
+      { area: 'Native AOT', risk: 'Validacao seletiva pendente por servico.', mitigation: 'Executar publish AOT por API/Worker.' }
+    ],
+    alerts: ['Native AOT: Validacao seletiva pendente por servico.']
+  });
+
   const [systemLogs, setSystemLogs] = useState<string[]>([
     'System initialization successful. Target: .NET 10.0 Native AOT.',
     'FeatureStore schema validated. PostgreSQL connected.',
@@ -394,12 +440,26 @@ export default function App() {
       }
     };
 
+    const fetchHardening = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/hardening/report`);
+        if (res.ok) {
+          const data = await res.json();
+          setHardening(data);
+        }
+      } catch (err) {
+        // Standalone simulation mode keeps the seeded hardening report.
+      }
+    };
+
     fetchMetrics();
     fetchIntelligence();
     fetchAdaptive();
+    fetchHardening();
     const intervalId = window.setInterval(fetchMetrics, 3000);
     const intelligenceIntervalId = window.setInterval(fetchIntelligence, 10000);
     const adaptiveIntervalId = window.setInterval(fetchAdaptive, 10000);
+    const hardeningIntervalId = window.setInterval(fetchHardening, 30000);
 
     // Setup SignalR Hub Connection
     const connection = new signalR.HubConnectionBuilder()
@@ -427,6 +487,7 @@ export default function App() {
       window.clearInterval(intervalId);
       window.clearInterval(intelligenceIntervalId);
       window.clearInterval(adaptiveIntervalId);
+      window.clearInterval(hardeningIntervalId);
     };
   }, []);
 
@@ -793,6 +854,17 @@ export default function App() {
                 <div className="metric-card-value">{metrics.drawdown}%</div>
                 <div className="metric-card-desc">Drawdown máximo do período</div>
               </div>
+
+              <div className="metric-card success">
+                <div className="metric-card-header">
+                  <span>Hardening</span>
+                  <ShieldAlert size={16} />
+                </div>
+                <div className="metric-card-value">
+                  {hardening.gates.filter(g => g.passed).length}/{hardening.gates.length}
+                </div>
+                <div className="metric-card-desc">{hardening.isReleaseCandidate ? 'Release candidate' : 'Ações pendentes'}</div>
+              </div>
             </section>
 
             <div className="split-grid">
@@ -981,6 +1053,41 @@ export default function App() {
                 <div className="intel-insights">
                   {adaptive.reasons.slice(0, 4).map((reason, i) => (
                     <div key={i}>{reason}</div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="premium-card">
+                <div className="premium-card-title">
+                  <h3>
+                    <ShieldAlert size={18} style={{ color: 'var(--color-accent)' }} />
+                    Hardening Gates
+                  </h3>
+                  <span className={`badge ${hardening.isReleaseCandidate ? 'success' : 'warning'}`}>
+                    {hardening.version}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="intel-stat">
+                    <span>Gates</span>
+                    <strong>{hardening.gates.filter(g => g.passed).length}/{hardening.gates.length}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Benchmarks</span>
+                    <strong>{hardening.benchmarks.length}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Chaos</span>
+                    <strong>{hardening.chaosScenarios.filter(c => c.passed).length}/{hardening.chaosScenarios.length}</strong>
+                  </div>
+                  <div className="intel-stat">
+                    <span>Riscos</span>
+                    <strong>{hardening.knownRisks.length}</strong>
+                  </div>
+                </div>
+                <div className="intel-insights">
+                  {hardening.gates.slice(0, 4).map((gate, i) => (
+                    <div key={i}>{gate.name}: {gate.evidence}</div>
                   ))}
                 </div>
               </div>

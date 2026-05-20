@@ -33,6 +33,8 @@ Esta pasta contém o planejamento oficial do projeto `CryptoTrading_05.2026_2`.
 | 22 | `22-frontend-version-strategy.md` | Estratégia de versões para Vite, TypeScript e React |
 | 23 | `23-local-rag-qdrant-bge-m3-agent-workflow.md` | RAG local com Qdrant + BGE-M3 para Antigravity/Copilot |
 | 24 | `24-mcp-servers-analysis-and-installation.md` | Análise e instalação dos MCPs úteis |
+| 25 | `25-development-plan-and-rag-setup.md` | Plano detalhado de desenvolvimento e setup do RAG |
+| 26 | `26-hardening-report.md` | Relatório de hardening, gates, benchmarks e riscos conhecidos |
 
 ## Regra de evolução
 

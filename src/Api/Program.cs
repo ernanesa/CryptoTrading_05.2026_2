@@ -51,6 +51,9 @@ builder.Services.AddSingleton<DynamicExitEngine>();
 builder.Services.AddSingleton<TradeAttributionService>();
 builder.Services.AddSingleton<WalkForwardEvaluator>();
 builder.Services.AddSingleton<AdaptiveStrategyOrchestrator>();
+builder.Services.AddSingleton<SecretRedactor>();
+builder.Services.AddSingleton<ChaosScenarioRunner>();
+builder.Services.AddSingleton<HardeningReportService>();
 builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();
 builder.Services.AddTransient<BinanceTestnetExecutor>();
@@ -78,6 +81,9 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = Dat
 
 app.MapGet("/api/metrics", (IMetricsService metrics) => Results.Ok(metrics.GetSnapshot()))
     .WithName("GetMetricsSnapshot");
+
+app.MapGet("/api/hardening/report", (HardeningReportService hardening) => Results.Ok(hardening.Generate()))
+    .WithName("GetHardeningReport");
 
 app.MapGet("/api/intelligence/snapshot", async (
     string symbol,

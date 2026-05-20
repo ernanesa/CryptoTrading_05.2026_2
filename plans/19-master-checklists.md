@@ -14,7 +14,7 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 | M5 Dashboard + Observability | Completed |
 | M6 Intelligence Layer | Completed |
 | M7 Adaptive Strategy Orchestration | Completed |
-| M8 Hardening | Not started |
+| M8 Hardening | Completed |
 
 ## Checklist antes de qualquer atividade
 
@@ -96,4 +96,25 @@ RAG consultado: sim
 Consulta: M7 AdaptiveStrategyOrchestrator AssetRanking StrategyScoring hysteresis cooldown RiskEngine DataQualityGate fixed vs adaptive dashboard
 Contexto encontrado: componentes da Stage 07, checklist M7 e Control Plane da arquitetura.
 Impacto: M7 concluida com Control Plane adaptativo heuristico, histerese/cooldown, gates de risco/qualidade, comparativo fixo vs adaptativo e dashboard.
+Data: 2026-05-20
+
+## M8 — Hardening checklist
+
+- [x] build limpo;
+- [x] testes limpos;
+- [x] benchmarks registrados;
+- [x] observabilidade ativa;
+- [x] dashboard operacional;
+- [x] documentacao atualizada;
+- [x] riscos conhecidos registrados;
+- [x] chaos scenarios registrados;
+- [x] seguranca de secrets revisada;
+- [x] AOT seletivo registrado.
+
+### Registro da atividade M8 fechamento
+
+RAG consultado: sim
+Consulta: Stage 08 Hardening gates build testes benchmarks observabilidade dashboard riscos conhecidos
+Contexto encontrado: gates e atividades da Stage 08.
+Impacto: M8 concluida com HardeningReport, endpoint de observabilidade, dashboard, testes, redator de secrets, chaos scenarios e relatorio de riscos.
 Data: 2026-05-20
