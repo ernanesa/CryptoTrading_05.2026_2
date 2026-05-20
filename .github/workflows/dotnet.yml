@@ -1,0 +1,106 @@
+name: CI/CD Pipeline — Build, Test & Native AOT Publish
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  CONFIGURATION: Release
+  SOLUTION: CryptoTrading.slnx
+  PUBLISH_DIR: ./publish/aot
+
+jobs:
+  # ──────────────────────────────────────────────
+  #  Job 1: Full Build + Test on ubuntu-latest
+  # ──────────────────────────────────────────────
+  build-and-test:
+    name: Build & Test (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Display .NET info
+        run: |
+          dotnet --info
+          dotnet --list-sdks
+          dotnet --list-runtimes
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Build (warnings → errors enforced)
+        run: dotnet build ${{ env.SOLUTION }} --no-restore -c ${{ env.CONFIGURATION }}
+
+      - name: Run unit tests
+        run: dotnet test tests/UnitTests/CryptoTrading.UnitTests.csproj \
+               --no-build -c ${{ env.CONFIGURATION }} \
+               --verbosity normal
+
+  # ──────────────────────────────────────────────
+  #  Job 2: Native AOT Publish (matrix: x64 primary, arm64 optional)
+  #          x64  → builds on every push/PR (no cross-compile needed)
+  #          arm64 → runs only on push to main (requires cross-compile toolchain)
+  # ──────────────────────────────────────────────
+  native-aot-publish:
+    name: Native AOT Publish (${{ matrix.rid }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.rid == 'linux-arm64' }}
+
+    strategy:
+      matrix:
+        rid: [linux-x64, linux-arm64]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install cross-compilation toolchain (arm64 only)
+        if: matrix.rid == 'linux-arm64'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            clang \
+            zlib1g-dev \
+            libc6-arm64-cross \
+            libc6-dev-arm64-cross \
+            binutils-aarch64-linux-gnu
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Publish Native AOT (${{ matrix.rid }})
+        run: >
+          dotnet publish src/Worker/CryptoTrading.Worker.csproj
+          --no-restore
+          -c ${{ env.CONFIGURATION }}
+          -r ${{ matrix.rid }}
+          --self-contained
+          -o ${{ env.PUBLISH_DIR }}/${{ matrix.rid }}
+          /p:PublishAot=true
+          /p:StripSymbols=true
+
+      - name: List published artifacts
+        run: ls -lh ${{ env.PUBLISH_DIR }}/${{ matrix.rid }}/
+
+      - name: Upload AOT binaries (${{ matrix.rid }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: cryptotrading-aot-${{ matrix.rid }}
+          path: ${{ env.PUBLISH_DIR }}/${{ matrix.rid }}/
+          retention-days: 7

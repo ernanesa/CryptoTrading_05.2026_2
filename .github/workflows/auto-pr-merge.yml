@@ -1,0 +1,44 @@
+name: Auto PR and Merge Pipeline
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  validate-and-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore and Build
+        run: |
+          dotnet restore CryptoTrading.slnx
+          dotnet build CryptoTrading.slnx --configuration Release --no-restore
+          
+      - name: Run Unit Tests
+        run: |
+          dotnet test tests/UnitTests/CryptoTrading.UnitTests.csproj --no-build --configuration Release
+
+      - name: Create PR and Auto-Merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Cria o Pull Request apontando para a main
+          gh pr create --base main --head ${{ github.ref_name }} --title "Auto PR: ${{ github.ref_name }}" --body "Automação de CI/CD para o projeto CryptoTrading HFT." || echo "PR já existe ou erro na criação"
+          
+          # Pausa para o GitHub processar a criação e calcular conflitos
+          sleep 5
+          
+          # 2. Habilita o Auto-merge.
+          gh pr merge ${{ github.ref_name }} --auto --squash
