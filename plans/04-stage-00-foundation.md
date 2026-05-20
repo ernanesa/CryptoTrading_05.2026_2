@@ -10,21 +10,21 @@ Projeto pronto para iniciar desenvolvimento sem dívida estrutural desnecessári
 
 ## Atividades
 
-- [ ] Verificar data atual.
-- [ ] Criar solution .NET 10.
-- [ ] Criar estrutura de projetos.
-- [ ] Configurar `Directory.Build.props`.
-- [ ] Configurar `.editorconfig`.
-- [ ] Configurar logs básicos.
-- [ ] Criar testes iniciais.
-- [ ] Criar README de execução local.
-- [ ] Criar `.gitignore`.
-- [ ] Criar pipeline CI básico.
+- [x] Verificar data atual.
+- [x] Criar solution .NET 10.
+- [x] Criar estrutura de projetos.
+- [x] Configurar `Directory.Build.props`.
+- [x] Configurar `.editorconfig`.
+- [x] Configurar logs básicos.
+- [x] Criar testes iniciais.
+- [x] Criar README de execução local.
+- [x] Criar `.gitignore`.
+- [x] Criar pipeline CI básico.
 
 ## Critérios de aceite
 
-- [ ] `dotnet restore` passa.
-- [ ] `dotnet build` passa.
-- [ ] testes passam.
-- [ ] nenhum secret real versionado.
-- [ ] README atualizado.
+- [x] `dotnet restore` passa.
+- [x] `dotnet build` passa.
+- [x] testes passam.
+- [x] nenhum secret real versionado.
+- [x] README atualizado.

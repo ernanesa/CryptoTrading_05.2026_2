@@ -79,3 +79,16 @@ Antes de criar código próprio, verificar biblioteca madura para:
 - ML;
 - testes;
 - dashboard.
+
+## 8. Fluxo de Git e Desenvolvimento (Branch & Commit)
+
+Ao iniciar qualquer atividade ou desenvolvimento de card:
+
+1. **Criar Branch Específica**: Nunca desenvolva diretamente na branch `main`. Crie uma branch com nome semântico para o card/atividade atual.
+2. **Desenvolver Focado**: Desenvolva tudo referente ao card/atividade de forma isolada nesta branch.
+3. **Validar e Testar**: Ao finalizar, teste tudo localmente e tenha absoluta certeza de que tudo está funcionando perfeitamente como esperado.
+4. **Atualizar Andamento**: Atualize o andamento da atividade nos checklists locais e no `plans/19-master-checklists.md`.
+5. **Commit Semântico**: Faça commits utilizando mensagens semânticas padronizadas (ex: `feat:`, `fix:`, `docs:`, `chore:`).
+6. **Checkout e Atualização da Main**: Faça checkout para `main`, atualize a `main` integrando as alterações desenvolvidas.
+7. **Reiniciar o Fluxo**: Crie uma nova branch para a próxima atividade e faça o processo todo novamente.
+

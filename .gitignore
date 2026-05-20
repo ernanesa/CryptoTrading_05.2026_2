@@ -1,0 +1,31 @@
+# .NET 10 Build files
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.userosscache
+*.sln.docstates
+
+# IDE files
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+
+# Docker
+docker-compose.override.yml
+
+# Qdrant runtime artifacts (binário, storage e logs ficam locais)
+tools/rag/qdrant_storage/
+tools/rag/bin/
+tools/rag/qdrant.log
+tools/rag/qdrant.pid
+.qdrant-initialized
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+storage/
