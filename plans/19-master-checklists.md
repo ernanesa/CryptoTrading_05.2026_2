@@ -8,7 +8,7 @@ Data-base: **2026-05-20 UTC-03 / America/Maceio**.
 |---|---|
 | M0 Foundation | Completed |
 | M1 Market Data + Feature Store | Completed |
-| M2 Backtesting + Strategy Lab | Not started |
+| M2 Backtesting + Strategy Lab | Completed |
 | M3 Paper Trading + Risk | Not started |
 | M4 Binance Spot Testnet | Not started |
 | M5 Dashboard + Observability | Not started |

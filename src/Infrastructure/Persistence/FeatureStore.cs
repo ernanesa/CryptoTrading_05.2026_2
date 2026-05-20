@@ -177,4 +177,26 @@ public class FeatureStore : IFeatureStore
         using var conn = CreateConnection();
         return await conn.QueryFirstOrDefaultAsync<DateTime?>(query, new { Symbol = symbol, Interval = interval });
     }
+
+    public async Task<IEnumerable<MarketDataPoint>> GetMarketDataPointsAsync(string symbol, string interval, DateTime startTime, DateTime endTime)
+    {
+        const string query = @"
+        SELECT 
+            c.id AS Id, c.symbol AS Symbol, c.interval AS Interval, c.open_time AS OpenTime, c.open AS Open, c.high AS High, c.low AS Low, c.close AS Close, c.volume AS Volume, c.taker_buy_volume AS TakerBuyVolume, c.close_time AS CloseTime,
+            f.candle_id AS CandleId, f.symbol AS Symbol, f.open_time AS OpenTime, f.ema_9 AS Ema9, f.ema_21 AS Ema21, f.ema_50 AS Ema50, f.ema_200 AS Ema200, f.rsi_14 AS Rsi14, f.macd_value AS MacdValue, f.macd_signal AS MacdSignal, f.macd_histogram AS MacdHistogram, f.atr_14 AS Atr14, f.bb_upper AS BbUpper, f.bb_middle AS BbMiddle, f.bb_lower AS BbLower, f.adx AS Adx, f.returns AS Returns, f.volume_z_score AS VolumeZScore, f.spread AS Spread, f.imbalance AS Imbalance, f.calculated_at AS CalculatedAt
+        FROM candles c
+        JOIN candle_features f ON c.id = f.candle_id
+        WHERE c.symbol = @Symbol AND c.interval = @Interval AND c.open_time >= @StartTime AND c.open_time <= @EndTime
+        ORDER BY c.open_time ASC;";
+
+        using var conn = CreateConnection();
+        var points = await conn.QueryAsync<Candle, CandleFeature, MarketDataPoint>(
+            query,
+            (candle, feature) => new MarketDataPoint { Candle = candle, Feature = feature },
+            new { Symbol = symbol.ToUpper(), Interval = interval.ToLower(), StartTime = startTime, EndTime = endTime },
+            splitOn: "CandleId"
+        );
+
+        return points;
+    }
 }

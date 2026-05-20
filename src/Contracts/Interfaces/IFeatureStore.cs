@@ -27,4 +27,9 @@ public interface IFeatureStore
     /// Útil para evitar re-ingestão e calcular deltas de dados faltantes.
     /// </summary>
     Task<DateTime?> GetLastCandleTimeAsync(string symbol, string interval);
+
+    /// <summary>
+    /// Resgata os MarketDataPoints (candles + features) salvos no banco de dados para um determinado par e intervalo temporal.
+    /// </summary>
+    Task<IEnumerable<MarketDataPoint>> GetMarketDataPointsAsync(string symbol, string interval, DateTime startTime, DateTime endTime);
 }

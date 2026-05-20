@@ -41,8 +41,8 @@ Comparar estratégias em dados históricos com taxas, slippage, risco e métrica
 
 ## Critérios de aceite
 
-- [ ] pelo menos 3 estratégias rodam;
-- [ ] relatório gerado;
-- [ ] resultado reproduzível;
-- [ ] taxas e slippage considerados;
-- [ ] performance por estratégia registrada.
+- [x] pelo menos 3 estratégias rodam;
+- [x] relatório gerado;
+- [x] resultado reproduzível;
+- [x] taxas e slippage considerados;
+- [x] performance por estratégia registrada.

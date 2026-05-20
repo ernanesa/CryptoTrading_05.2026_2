@@ -10,4 +10,5 @@
 | 2026-05-20 | Implementação completa da M1: Market Data & Feature Store — Ingestão de candles da Binance, DataQualityGate, cálculo de indicadores técnicos (EMA, RSI, MACD, ATR, BB, ADX) e persistência em PostgreSQL via Dapper |
 | 2026-05-20 | Infraestrutura Docker Compose configurada: PostgreSQL 16 Alpine + Qdrant v1.18 em containers gerenciados |
 | 2026-05-20 | Adicionadas e validadas features adicionais de M1: Returns, Volume Z-Score, Spread e Imbalance (Taker Buy) no pipeline e banco de dados |
+| 2026-05-20 | Implementação completa da M2: Backtesting + Strategy Lab — Engine de backtest, gerenciador de posições, fee model, slippage model, performance analyzer, 4 estratégias de trading e endpoints HTTP de execução |
 
