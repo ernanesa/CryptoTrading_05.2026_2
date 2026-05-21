@@ -2,6 +2,7 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-21 | Verificação, validação e preenchimento dos checklists de infraestrutura RAG local, servidores MCP/VSCode e critérios de aceitação do motor de risco (RiskEngine) |
 | 2026-05-21 | Criação e consolidação física dos 11 ADRs recomendados (ADR-001 ao ADR-011) documentando em detalhes todas as decisões de arquitetura e tecnologia adotadas no projeto |
 | 2026-05-20 | Criação inicial do planejamento completo no novo repositório `ernanesa/CryptoTrading_05.2026_2` |
 | 2026-05-20 | Definido novo repositório como único alvo de escrita |

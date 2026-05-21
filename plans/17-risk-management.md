@@ -50,8 +50,8 @@ O AdaptiveStrategyOrchestrator pode sugerir estratégia, ativo, timeframe, peso 
 
 ## Critérios de aceite
 
-- [ ] Toda decisão relevante gera RiskDecision.
-- [ ] Toda rejeição tem motivo legível.
-- [ ] RiskEngine é chamado antes de qualquer executor.
-- [ ] Limites são configuráveis.
-- [ ] Dashboard exibe estado de risco.
+- [x] Toda decisão relevante gera RiskDecision.
+- [x] Toda rejeição tem motivo legível.
+- [x] RiskEngine é chamado antes de qualquer executor.
+- [x] Limites são configuráveis.
+- [x] Dashboard exibe estado de risco.

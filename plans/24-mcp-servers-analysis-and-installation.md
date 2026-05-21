@@ -1,6 +1,6 @@
 # 24 — MCP Servers: análise, utilidade e instalação
 
-Data-base: **2026-05-20 UTC-03 / America/Maceio**.
+Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 
 ## 1. Objetivo
 
@@ -455,16 +455,16 @@ Atualize documentação/checklists ao final.
 
 ## 17. Checklist MCP inicial
 
-- [ ] Qdrant rodando localmente.
-- [ ] Qdrant MCP instalado.
-- [ ] Filesystem MCP restrito ao workspace.
-- [ ] Memory MCP instalado.
-- [ ] GitHub MCP avaliado com token mínimo.
-- [ ] `.github/copilot-instructions.md` criado.
-- [ ] `.vscode/mcp.json` criado.
-- [ ] Antigravity testado com prompt otimizado.
-- [ ] Copilot testado com MCP/RAG.
-- [ ] Nenhum secret real em arquivos versionados.
+- [x] Qdrant rodando localmente.
+- [x] Qdrant MCP instalado.
+- [x] Filesystem MCP restrito ao workspace.
+- [x] Memory MCP instalado.
+- [x] GitHub MCP avaliado com token mínimo.
+- [x] `.github/copilot-instructions.md` criado.
+- [x] `.vscode/mcp.json` criado.
+- [x] Antigravity testado com prompt otimizado.
+- [x] Copilot testado com MCP/RAG.
+- [x] Nenhum secret real em arquivos versionados.
 
 ## 18. Referências
 

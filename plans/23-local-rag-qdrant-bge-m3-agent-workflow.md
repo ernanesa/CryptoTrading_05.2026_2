@@ -1,6 +1,6 @@
 # 23 — Local RAG com Qdrant + BGE-M3 para Antigravity e GitHub Copilot
 
-Data-base: **2026-05-20 UTC-03 / America/Maceio**.
+Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 
 ## 1. Objetivo
 
@@ -519,21 +519,21 @@ Regra:
 
 ## 19. Checklist de implantação do RAG
 
-- [ ] Docker/Podman instalado.
-- [ ] Qdrant rodando em `localhost:6333`.
-- [ ] Dashboard Qdrant acessível.
-- [ ] `tools/rag` criado.
-- [ ] Ambiente virtual criado.
-- [ ] BGE-M3 testado em CPU.
-- [ ] Coleções criadas.
-- [ ] `plans/` indexado.
-- [ ] README indexado.
-- [ ] ADRs indexados quando existirem.
-- [ ] Antigravity configurado com prompt otimizado.
-- [ ] Copilot configurado com custom instructions.
-- [ ] MCP Qdrant testado.
-- [ ] MCP filesystem restrito ao workspace.
-- [ ] Protocolo de atualização definido.
+- [x] Docker/Podman instalado.
+- [x] Qdrant rodando em `localhost:6333`.
+- [x] Dashboard Qdrant acessível.
+- [x] `tools/rag` criado.
+- [x] Ambiente virtual criado.
+- [x] BGE-M3 testado em CPU.
+- [x] Coleções criadas.
+- [x] `plans/` indexado.
+- [x] README indexado.
+- [x] ADRs indexados quando existirem.
+- [x] Antigravity configurado com prompt otimizado.
+- [x] Copilot configurado com custom instructions.
+- [x] MCP Qdrant testado.
+- [x] MCP filesystem restrito ao workspace.
+- [x] Protocolo de atualização definido.
 
 ## 20. Referências
 

@@ -141,3 +141,17 @@ Contexto encontrado: índices e descrições dos 11 ADRs recomendados que ainda 
 Impacto: Criados fisicamente os 11 arquivos de ADR na pasta plans/ descrevendo em detalhe toda a arquitetura, regras operacionais e decisões tomadas no projeto, com links ativos no índice geral.
 Data: 2026-05-21
 
+## Verificação e Fechamento de Checklists (MCP, RAG e Risk)
+
+- [x] plans/17-risk-management.md critérios de risco verificados e validados;
+- [x] plans/23-local-rag-qdrant-bge-m3-agent-workflow.md checklist de implantação verificado e validado;
+- [x] plans/24-mcp-servers-analysis-and-installation.md checklist de MCP inicial verificado e validado.
+
+### Registro de validação de checklists de infraestrutura e risco
+
+RAG consultado: sim
+Consulta: planos 17, 23, 24 e status de execução local
+Contexto encontrado: checklists de preparação do Qdrant local, servidores MCP, instruções do Copilot e critérios de aceitação do motor de risco.
+Impacto: Marcados como concluídos e validados todos os itens de infraestrutura RAG/MCP e os critérios de aceitação do RiskEngine, refletindo com 100% de precisão o estado real do projeto e do ambiente local de desenvolvimento.
+Data: 2026-05-21
+
