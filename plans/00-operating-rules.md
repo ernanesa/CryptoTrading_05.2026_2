@@ -1,6 +1,6 @@
 # 00 — Operating Rules
 
-Data-base: **2026-05-20 UTC-03 / America/Maceio**.
+Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 
 ## 1. Repositório oficial de escrita
 

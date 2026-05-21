@@ -1,6 +1,6 @@
 # 19 — Master Checklists
 
-Data-base: **2026-05-20 UTC-03 / America/Maceio**.
+Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 
 ## Status macro
 
@@ -118,3 +118,26 @@ Consulta: Stage 08 Hardening gates build testes benchmarks observabilidade dashb
 Contexto encontrado: gates e atividades da Stage 08.
 Impacto: M8 concluida com HardeningReport, endpoint de observabilidade, dashboard, testes, redator de secrets, chaos scenarios e relatorio de riscos.
 Data: 2026-05-20
+
+## ADR — Consolidação da Arquitetura
+
+- [x] ADR-001: Arquitetura geral .NET-first criado e linkado;
+- [x] ADR-002: Dapper-first persistence criado e linkado;
+- [x] ADR-003: Python fora do MVP/runtime criado e linkado;
+- [x] ADR-004: AOT seletivo por serviço criado e linkado;
+- [x] ADR-005: ML.NET como serviço separado opcional criado e linkado;
+- [x] ADR-006: Binance adapter e abstrações criado e linkado;
+- [x] ADR-007: Feature Store versionada criado e linkado;
+- [x] ADR-008: RiskEngine obrigatório criado e linkado;
+- [x] ADR-009: Adaptive Strategy Orchestration criado e linkado;
+- [x] ADR-010: Observabilidade e DecisionAudit criado e linkado;
+- [x] ADR-011: RAG local e protocolo de consulta criado e linkado.
+
+### Registro de consolidação de ADRs
+
+RAG consultado: sim
+Consulta: planos 00 a 26, ADR index e regras operacionais
+Contexto encontrado: índices e descrições dos 11 ADRs recomendados que ainda não estavam criados fisicamente no repositório.
+Impacto: Criados fisicamente os 11 arquivos de ADR na pasta plans/ descrevendo em detalhe toda a arquitetura, regras operacionais e decisões tomadas no projeto, com links ativos no índice geral.
+Data: 2026-05-21
+
