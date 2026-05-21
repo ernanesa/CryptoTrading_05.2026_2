@@ -2,6 +2,9 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-21 | Ingestão e persistência bem-sucedidas de dados históricos e em tempo real (candles e features técnicos) no PostgreSQL local para BTCUSDT e ETHUSDT |
+| 2026-05-21 | Implementação do endpoint de seed `/api/paper/seed` para popular carteiras virtuais, trades reais e auditorias de risco (APPROVED/REJECTED) para demonstração no painel |
+| 2026-05-21 | Revisão e atualização do `README_LOCAL.md` com instruções corretas sobre o ecossistema C# RagTool e Docker-compose do PostgreSQL/Qdrant |
 | 2026-05-21 | Verificação, validação e preenchimento dos checklists e critérios de aceitação do Dashboard e Observabilidade (Stage 05) |
 | 2026-05-21 | Verificação, validação e preenchimento dos checklists de infraestrutura RAG local, servidores MCP/VSCode e critérios de aceitação do motor de risco (RiskEngine) |
 | 2026-05-21 | Criação e consolidação física dos 11 ADRs recomendados (ADR-001 ao ADR-011) documentando em detalhes todas as decisões de arquitetura e tecnologia adotadas no projeto |

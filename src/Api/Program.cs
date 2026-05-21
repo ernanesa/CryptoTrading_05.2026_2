@@ -294,6 +294,47 @@ app.MapDelete("/api/paper/reset", async (IFeatureStore store) =>
 })
 .WithName("ResetPaperTrading");
 
+// 7.5. Paper Trading — Popular dados de teste com histórico realista para demonstrar no Dashboard
+app.MapPost("/api/paper/seed", async (IFeatureStore store) =>
+{
+    // Limpa dados anteriores
+    await store.ClearPaperTradingDataAsync();
+
+    // 1. Salvar Balanço da Carteira USDT e BTC
+    await store.SaveWalletBalanceAsync(new WalletBalance { Symbol = "USDT", Free = 9450.50m, Locked = 0.0m, UpdatedAt = DateTime.UtcNow });
+    await store.SaveWalletBalanceAsync(new WalletBalance { Symbol = "BTC", Free = 0.0082m, Locked = 0.001m, UpdatedAt = DateTime.UtcNow });
+
+    // 2. Inserir Trades de Teste Realistas
+    var baseTime = DateTime.UtcNow.AddHours(-12);
+    await store.SavePaperTradeAsync(new PaperTrade { Symbol = "BTCUSDT", Type = "BUY", Price = 67200.0m, Quantity = 0.05m, Fee = 3.36m, PnL = 0.0m, ExecutedAt = baseTime });
+    await store.SavePaperTradeAsync(new PaperTrade { Symbol = "BTCUSDT", Type = "SELL", Price = 67550.0m, Quantity = 0.05m, Fee = 3.37m, PnL = 17.50m, ExecutedAt = baseTime.AddMinutes(45) });
+
+    await store.SavePaperTradeAsync(new PaperTrade { Symbol = "ETHUSDT", Type = "BUY", Price = 3450.0m, Quantity = 1.0m, Fee = 3.45m, PnL = 0.0m, ExecutedAt = baseTime.AddHours(2) });
+    await store.SavePaperTradeAsync(new PaperTrade { Symbol = "ETHUSDT", Type = "SELL", Price = 3420.0m, Quantity = 1.0m, Fee = 3.42m, PnL = -30.0m, ExecutedAt = baseTime.AddHours(2).AddMinutes(30) });
+
+    await store.SavePaperTradeAsync(new PaperTrade { Symbol = "BTCUSDT", Type = "BUY", Price = 66800.0m, Quantity = 0.05m, Fee = 3.34m, PnL = 0.0m, ExecutedAt = baseTime.AddHours(5) });
+    await store.SavePaperTradeAsync(new PaperTrade { Symbol = "BTCUSDT", Type = "SELL", Price = 67250.0m, Quantity = 0.05m, Fee = 3.36m, PnL = 22.50m, ExecutedAt = baseTime.AddHours(5).AddMinutes(90) });
+
+    // 3. Inserir Auditorias de Decisão (APPROVED / REJECTED)
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", SignalType = "BUY", Price = 67200.0m, Timestamp = baseTime, Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine: todos os limites de Drawdown e Perda Diária estão normais." });
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", SignalType = "SELL", Price = 67550.0m, Timestamp = baseTime.AddMinutes(45), Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine: sinal de saída de tendência acionado." });
+
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "ETHUSDT", StrategyName = "RSI Mean Reversion", SignalType = "BUY", Price = 3450.0m, Timestamp = baseTime.AddHours(2), Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine: RSI em nível extremo de sobrevenda (24.5)." });
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "ETHUSDT", StrategyName = "RSI Mean Reversion", SignalType = "SELL", Price = 3420.0m, Timestamp = baseTime.AddHours(2).AddMinutes(30), Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine: stop-loss dinâmico acionado pelo motor de saída." });
+
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "BTCUSDT", StrategyName = "Bollinger Mean Reversion", SignalType = "BUY", Price = 67800.0m, Timestamp = baseTime.AddHours(3), Decision = "REJECTED", Reason = "Rejeitado pelo RiskEngine: volatilidade instantânea (ATR=150) excede o limite máximo permitido." });
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "BTCUSDT", StrategyName = "ATR Breakout", SignalType = "BUY", Price = 67900.0m, Timestamp = baseTime.AddHours(4), Decision = "REJECTED", Reason = "Rejeitado pelo RiskEngine: spread do book de ofertas (0.15%) excede o spread máximo permitido para Spot." });
+
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", SignalType = "BUY", Price = 66800.0m, Timestamp = baseTime.AddHours(5), Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine: rompimento de média móvel com volume z-score favorável." });
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", SignalType = "SELL", Price = 67250.0m, Timestamp = baseTime.AddHours(5).AddMinutes(90), Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine: sinal de saída de tendência acionado." });
+
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "ETHUSDT", StrategyName = "RSI Mean Reversion", SignalType = "BUY", Price = 3410.0m, Timestamp = baseTime.AddHours(6), Decision = "REJECTED", Reason = "Rejeitado pelo RiskEngine: score de anomalia de mercado (0.87) está acima do limite de tolerância." });
+    await store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = "BTCUSDT", StrategyName = "Bollinger Mean Reversion", SignalType = "BUY", Price = 66950.0m, Timestamp = baseTime.AddHours(7), Decision = "REJECTED", Reason = "Rejeitado pelo RiskEngine: limite diário máximo de 5 posições abertas já foi atingido para BTC." });
+
+    return Results.Ok(new { Message = "Dados fictícios de simulação inseridos com sucesso para demonstração visual." });
+})
+.WithName("SeedPaperTrading");
+
 // 8. Paper Trading — Disparar um sinal manualmente para uma estratégia em tempo real
 app.MapPost("/api/paper/process-signal", async (
     string strategyName,
