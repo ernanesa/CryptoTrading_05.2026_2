@@ -119,7 +119,7 @@ public static class Program
         // Inicializa coleções
         await qdrant.InitializeCollectionsAsync();
 
-        // 2. Coleta arquivos
+        // 2. Coleta arquivos markdown
         var plansDir = Path.Combine(repoRoot, "plans");
         var markdownFiles = Directory.GetFiles(plansDir, "*.md", SearchOption.AllDirectories).ToList();
         
@@ -140,10 +140,10 @@ public static class Program
             allChunks.AddRange(fileChunks);
         }
 
-        Console.WriteLine($"Total de chunks de texto gerados: {allChunks.Count}");
+        Console.WriteLine($"Total de chunks de texto gerados para documentação: {allChunks.Count}");
 
-        // 3. Gera Embeddings e envia em lote
-        Console.WriteLine("Gerando embeddings locais via CPU (ONNX MiniLM)...");
+        // 3. Gera Embeddings e envia em lote para cryptotrading_docs
+        Console.WriteLine("Gerando embeddings de documentação via CPU (ONNX MiniLM)...");
         var pointsToInsert = new List<(MarkdownChunk Chunk, float[] Vector)>();
 
         for (int i = 0; i < allChunks.Count; i++)
@@ -155,7 +155,7 @@ public static class Program
                 var vector = embedder.GenerateEmbedding(chunk.Content);
                 if (i < 5)
                 {
-                    Console.WriteLine($"Chunk {i + 1}: tamanho do vetor = {vector.Length}");
+                    Console.WriteLine($"Doc Chunk {i + 1}: tamanho do vetor = {vector.Length}");
                 }
                 pointsToInsert.Add((chunk, vector));
             }
@@ -164,10 +164,60 @@ public static class Program
                 Console.WriteLine($"\n[AVISO] Erro ao gerar embedding para chunk {i}: {ex.Message}");
             }
         }
-        Console.WriteLine("\nEmbeddings gerados com sucesso!");
+        Console.WriteLine("Embeddings de documentação gerados com sucesso!");
 
         // Envia para o Qdrant
         await qdrant.UpsertChunksAsync("cryptotrading_docs", pointsToInsert);
+
+        // 4. Coleta arquivos de código do projeto
+        Console.WriteLine("\n=== COLETANDO ARQUIVOS DE CÓDIGO DO PROJETO ===");
+        var allFiles = Directory.GetFiles(repoRoot, "*.*", SearchOption.AllDirectories);
+        var codeFiles = allFiles.Where(IsCodeFile).ToList();
+
+        Console.WriteLine($"Encontrados {codeFiles.Count} arquivos de código qualificados para indexação.");
+
+        var allCodeChunks = new List<MarkdownChunk>();
+        foreach (var file in codeFiles)
+        {
+            try
+            {
+                var fileChunks = CodeChunker.ParseFile(file, repoRoot);
+                allCodeChunks.AddRange(fileChunks);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AVISO] Erro ao parsear arquivo de código {Path.GetFileName(file)}: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"Total de chunks de código gerados: {allCodeChunks.Count}");
+
+        // 5. Gera Embeddings e envia para cryptotrading_code
+        Console.WriteLine("Gerando embeddings de código via CPU (ONNX MiniLM)...");
+        var codePointsToInsert = new List<(MarkdownChunk Chunk, float[] Vector)>();
+
+        for (int i = 0; i < allCodeChunks.Count; i++)
+        {
+            var chunk = allCodeChunks[i];
+
+            try
+            {
+                var vector = embedder.GenerateEmbedding(chunk.Content);
+                if (i < 5)
+                {
+                    Console.WriteLine($"Code Chunk {i + 1}: tamanho do vetor = {vector.Length}");
+                }
+                codePointsToInsert.Add((chunk, vector));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[AVISO] Erro ao gerar embedding para chunk de código {i}: {ex.Message}");
+            }
+        }
+        Console.WriteLine("Embeddings de código gerados com sucesso!");
+
+        // Envia para o Qdrant
+        await qdrant.UpsertChunksAsync("cryptotrading_code", codePointsToInsert);
 
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("\n=== INGESTÃO CONCLUÍDA COM SUCESSO! ===");
@@ -254,5 +304,26 @@ Antes de codar, gere um plano curto e diga quais arquivos serão alterados.";
         Console.ResetColor();
         Console.WriteLine(optimizedPrompt);
         Console.WriteLine("\n==========================================\n");
+    }
+
+    private static bool IsCodeFile(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext != ".cs" && ext != ".ts" && ext != ".tsx" && ext != ".css" && ext != ".json")
+            return false;
+
+        var parts = filePath.Split(Path.DirectorySeparatorChar);
+        foreach (var part in parts)
+        {
+            var p = part.ToLowerInvariant();
+            if (p == "bin" || p == "obj" || p == "node_modules" || p == "dist" || p == "build" || p == ".git" || p == ".gemini" || p == "qdrant_storage" || p == ".vs" || p == ".idea")
+                return false;
+        }
+
+        var fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        if (fileName == "package-lock.json" || fileName == "yarn.lock" || fileName == "pnpm-lock.yaml" || fileName == "mcp-state.json")
+            return false;
+
+        return true;
     }
 }
