@@ -155,3 +155,15 @@ Contexto encontrado: checklists de preparação do Qdrant local, servidores MCP,
 Impacto: Marcados como concluídos e validados todos os itens de infraestrutura RAG/MCP e os critérios de aceitação do RiskEngine, refletindo com 100% de precisão o estado real do projeto e do ambiente local de desenvolvimento.
 Data: 2026-05-21
 
+## Verificação e Fechamento de Checklists (Dashboard e Observabilidade)
+
+- [x] plans/09-stage-05-dashboard-observability.md critérios de aceitação validados e preenchidos.
+
+### Registro de validação do checklist de Dashboard e Observabilidade
+
+RAG consultado: sim
+Consulta: plano 09 e status do frontend Vite-React
+Contexto encontrado: critérios de aceitação para o dashboard de monitoramento HFT em tempo real, SignalR BFF e telemetria OpenTelemetry.
+Impacto: Verificados e validados os critérios de aceitação do Dashboard React e telemetria de observabilidade no ASP.NET, marcando todos os itens como concluídos em total conformidade com a entrega operacional do MVP.
+Data: 2026-05-21
+

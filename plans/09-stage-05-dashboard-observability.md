@@ -1,5 +1,7 @@
 # 09 — Stage 05: Dashboard + Observability
 
+Data-base: **2026-05-21 UTC-03 / America/Maceio**.
+
 ## Objetivo
 
 Criar painel e observabilidade para acompanhar estado, métricas, decisões, risco e estratégias.
@@ -48,9 +50,9 @@ Criar painel e observabilidade para acompanhar estado, métricas, decisões, ris
 
 ## Critérios de aceite
 
-- [ ] dashboard mostra status;
-- [ ] métricas em tempo real;
-- [ ] logs estruturados;
-- [ ] traces com correlation id;
-- [ ] health checks;
-- [ ] tela de estratégia/regime/score.
+- [x] dashboard mostra status;
+- [x] métricas em tempo real;
+- [x] logs estruturados;
+- [x] traces com correlation id;
+- [x] health checks;
+- [x] tela de estratégia/regime/score.
