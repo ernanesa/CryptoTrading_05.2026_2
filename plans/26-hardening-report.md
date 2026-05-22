@@ -28,7 +28,7 @@ Registrar o fechamento da M8 com gates de qualidade, seguranca, performance, obs
 
 ## Harness local
 
-O projeto `tools/benchmarks/CryptoTrading.Benchmarks` executa os cenarios locais com `Stopwatch` e saida tabular. Ele evita dependencia de rede no ambiente de desenvolvimento atual e mantem comandos compativeis com uma migracao futura para BenchmarkDotNet.
+O projeto `tools/benchmarks/CryptoTrading.Benchmarks` executa os cenarios locais com `Stopwatch` e saida tabular. Os cenarios `IndicatorService.CalculateFeatures` e `AdaptiveStrategyOrchestrator.Decide` rodam sem dependencias externas. O cenario `FeatureStore.GetMarketDataPointsAsync` sobe PostgreSQL efemero via Testcontainers apenas quando filtrado explicitamente, mantendo compatibilidade com uma migracao futura para BenchmarkDotNet.
 
 ## Automacao CI
 
@@ -53,6 +53,7 @@ Os cenarios `FeatureStore.GetMarketDataPointsAsync` e `ApiWorker.NativeAot.Publi
 | Area | Risco | Mitigacao |
 |---|---|---|
 | Integration tests | Testcontainers depende de Docker disponivel no host/CI. | `dotnet test tests/IntegrationTests/CryptoTrading.IntegrationTests.csproj -c Release` fica gate manual opt-in no workflow de hardening. |
+| FeatureStore benchmark | Benchmark PostgreSQL depende de Docker disponivel no host/CI. | `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*FeatureStore*' --iterations 3` fica gate manual opt-in no workflow de hardening. |
 | E2E tests | Playwright exige browsers e bootstrap de ambiente. | `npm run build` fica gate obrigatorio; `npm run test:e2e` fica gate manual opt-in no workflow de hardening. |
 | Native AOT | Dapper e CryptoExchange.Net emitem warnings de trim/AOT durante o publish opt-in. | Manter `bash tools/validate-native-aot.sh linux-x64` como gate manual e acompanhar dependencias antes de tornar AOT obrigatorio no CI. |
 | Trading runtime | Orquestracao adaptativa e inteligencia nao podem executar sem RiskEngine. | Preservar RiskEngine e DecisionAudit nos caminhos de execucao. |
@@ -160,3 +161,31 @@ Riscos: exige Docker disponível no host/runner e pode baixar imagem PostgreSQL;
 Evidencia local:
 
 - `dotnet test tests/IntegrationTests/CryptoTrading.IntegrationTests.csproj -c Release`: 1 teste passou contra PostgreSQL efêmero via Testcontainers.
+
+## Benchmark opt-in FeatureStore/PostgreSQL
+
+Data: 2026-05-21.
+
+Consulta RAG: `FeatureStore.GetMarketDataPointsAsync benchmark PostgreSQL fixture Testcontainers hardening Dapper Npgsql`.
+
+Contexto recuperado: o hardening report já registrava `FeatureStore.GetMarketDataPointsAsync` como benchmark esperado para latência Dapper/Npgsql, mas a execução ainda dependia de fixture PostgreSQL.
+
+Entrega de valor: o harness local agora executa o benchmark de leitura do FeatureStore contra PostgreSQL efêmero via Testcontainers, com seed de 300 candles/features e validação de contagem retornada antes e durante a medição.
+
+Critérios de aceite:
+
+- benchmark `--filter '*FeatureStore*'` executa fixture PostgreSQL real;
+- cenário permanece opt-in e não bloqueia `push`/`pull_request` padrão;
+- workflow `hardening-gates.yml` permite execução manual por `run_featurestore_benchmark=true`;
+- documentação e changelog refletem o novo gate.
+
+Riscos: exige Docker disponível no host/runner e pode baixar imagem PostgreSQL; por isso continua opt-in.
+
+Evidencia local:
+
+- `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*FeatureStore*' --iterations 3`: benchmark passou com 300 pontos de mercado e média local de 9.5164 ms.
+- `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*' --iterations 3`: benchmark passou com média local de 0.2053 ms.
+- `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Indicator*' --iterations 2`: benchmark passou com média local de 17.9755 ms.
+- `dotnet test`: 47 testes passaram.
+- `npm run build`: dashboard compilou em produção.
+- `git diff --check`: sem problemas de whitespace.

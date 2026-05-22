@@ -2,6 +2,8 @@ using System.Diagnostics;
 using CryptoTrading.Application.Services;
 using CryptoTrading.Domain.Entities;
 using CryptoTrading.Domain.Enums;
+using CryptoTrading.Infrastructure.Persistence;
+using Testcontainers.PostgreSql;
 
 var filter = ReadOption(args, "--filter") ?? "*";
 var iterations = int.TryParse(ReadOption(args, "--iterations"), out var parsedIterations)
@@ -9,7 +11,7 @@ var iterations = int.TryParse(ReadOption(args, "--iterations"), out var parsedIt
     : 20;
 
 var runner = new LocalBenchmarkRunner(iterations);
-var results = runner.Run(filter);
+var results = await runner.RunAsync(filter);
 
 Console.WriteLine("CryptoTrading local benchmark harness");
 Console.WriteLine($"Filter: {filter} | Iterations: {iterations}");
@@ -52,7 +54,7 @@ public sealed class LocalBenchmarkRunner
         _iterations = iterations;
     }
 
-    public List<BenchmarkResult> Run(string filter)
+    public async Task<List<BenchmarkResult>> RunAsync(string filter)
     {
         var results = new List<BenchmarkResult>();
 
@@ -68,13 +70,7 @@ public sealed class LocalBenchmarkRunner
 
         if (Matches(filter, "FeatureStore.GetMarketDataPointsAsync"))
         {
-            results.Add(new BenchmarkResult(
-                "FeatureStore.GetMarketDataPointsAsync",
-                "RegisteredOnly",
-                0,
-                0,
-                0,
-                "Requires PostgreSQL fixture; keep as opt-in integration benchmark."));
+            results.Add(await BenchmarkFeatureStoreAsync());
         }
 
         if (Matches(filter, "Api.NativeAot.Publish"))
@@ -94,6 +90,62 @@ public sealed class LocalBenchmarkRunner
                 new("No matching benchmark", "Skipped", 0, 0, 0, "Adjust --filter, for example --filter *Adaptive*.")
             }
             : results;
+    }
+
+    private async Task<BenchmarkResult> BenchmarkFeatureStoreAsync()
+    {
+        await using var postgres = new PostgreSqlBuilder("postgres:16-alpine")
+            .WithDatabase("cryptotrading_benchmarks")
+            .WithUsername("postgres")
+            .WithPassword("postgres")
+            .Build();
+
+        await postgres.StartAsync();
+
+        var store = new FeatureStore(postgres.GetConnectionString());
+        var candles = SampleDataFactory.CreateCandles(300);
+        var start = candles[0].OpenTime;
+        var end = candles[^1].OpenTime;
+
+        await store.InitializeSchemaAsync();
+        await store.SaveCandlesAsync(candles);
+        var features = SampleDataFactory.CreateFeatures(candles.Count);
+        for (var i = 0; i < features.Count; i++)
+        {
+            features[i].CandleId = candles[i].Id;
+        }
+
+        await store.SaveFeaturesAsync(features);
+
+        async Task QueryFeatureStoreAsync()
+        {
+            var points = (await store.GetMarketDataPointsAsync("BTCUSDT", "1m", start, end)).ToList();
+            if (points.Count != candles.Count)
+            {
+                throw new InvalidOperationException("FeatureStore benchmark returned an unexpected point count.");
+            }
+        }
+
+        await QueryFeatureStoreAsync();
+
+        var stopwatch = Stopwatch.StartNew();
+        for (var i = 0; i < _iterations; i++)
+        {
+            await QueryFeatureStoreAsync();
+        }
+
+        stopwatch.Stop();
+        var total = stopwatch.Elapsed.TotalMilliseconds;
+        var average = total / _iterations;
+        var ops = total > 0 ? _iterations / stopwatch.Elapsed.TotalSeconds : 0;
+
+        return new BenchmarkResult(
+            "FeatureStore.GetMarketDataPointsAsync",
+            "Passed",
+            total,
+            average,
+            ops,
+            "PostgreSQL Testcontainers fixture with 300 seeded market data points.");
     }
 
     private BenchmarkResult RunTimed(string name, Action benchmark)
@@ -249,11 +301,11 @@ public static class SampleDataFactory
         return candles;
     }
 
-    public static List<CandleFeature> CreateFeatures()
+    public static List<CandleFeature> CreateFeatures(int count = 80)
     {
         var start = new DateTime(2026, 5, 20, 12, 0, 0, DateTimeKind.Utc);
 
-        return Enumerable.Range(0, 80)
+        return Enumerable.Range(0, count)
             .Select(i => new CandleFeature
             {
                 CandleId = i + 1,

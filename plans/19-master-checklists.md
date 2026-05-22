@@ -159,6 +159,24 @@ Contexto encontrado: hardening report mantinha testes de integração como opt-i
 Impacto: Criado e validado projeto de integração opt-in para validar schema, escrita e leitura do FeatureStore em PostgreSQL efêmero via Testcontainers.
 Data: 2026-05-21
 
+## Benchmark opt-in FeatureStore — PostgreSQL
+
+- [x] data atual verificada: 2026-05-21 23:34:27 -03 / America/Maceio;
+- [x] plano, hardening report e RAG consultados;
+- [x] documentação oficial não reaplicada, pois o Testcontainers PostgreSQL já foi validado na atividade anterior;
+- [x] entrega de valor definida: benchmark real para latência de leitura Dapper/Npgsql do FeatureStore;
+- [x] critérios de aceite definidos: fixture PostgreSQL real, seed reprodutível, filtro opt-in e workflow manual;
+- [x] riscos listados: Docker/imagem PostgreSQL dependem do ambiente;
+- [x] testes esperados definidos e executados: benchmark `*FeatureStore*`, smoke benchmarks obrigatórios, `dotnet test`, `npm run build` e `git diff --check`.
+
+### Registro do benchmark opt-in FeatureStore
+
+RAG consultado: sim
+Consulta: FeatureStore.GetMarketDataPointsAsync benchmark PostgreSQL fixture Testcontainers hardening Dapper Npgsql
+Contexto encontrado: hardening report registrava o benchmark FeatureStore como alvo esperado para Dapper/Npgsql com fixture PostgreSQL.
+Impacto: O benchmark `FeatureStore.GetMarketDataPointsAsync` deixou de ser apenas registro e passou a executar contra PostgreSQL efêmero via Testcontainers, com acionamento manual no workflow de hardening.
+Data: 2026-05-21
+
 ## Gate opt-in Playwright — Dashboard E2E
 
 - [x] data atual verificada: 2026-05-21 23:20:16 -03 / America/Maceio;

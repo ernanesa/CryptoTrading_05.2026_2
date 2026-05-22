@@ -8,8 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\Application\CryptoTrading.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Domain\CryptoTrading.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Infrastructure\CryptoTrading.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

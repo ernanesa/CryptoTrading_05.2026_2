@@ -23,6 +23,14 @@ on:
         options:
           - 'false'
           - 'true'
+      run_featurestore_benchmark:
+        description: 'Run opt-in FeatureStore PostgreSQL benchmark'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
       run_native_aot:
         description: 'Run opt-in Native AOT publish validation'
         required: false
@@ -92,6 +100,10 @@ jobs:
 
       - name: Run indicator benchmark smoke
         run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Indicator*' --iterations 2
+
+      - name: Run FeatureStore PostgreSQL benchmark
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_featurestore_benchmark == 'true' }}
+        run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*FeatureStore*' --iterations 3
 
       - name: Run Native AOT validation
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_native_aot == 'true' }}

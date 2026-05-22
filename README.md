@@ -74,7 +74,11 @@ Benchmarks locais:
 
 ```bash
 dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*'
+dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Indicator*'
+dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*FeatureStore*' --iterations 3
 ```
+
+O benchmark `*FeatureStore*` e opt-in e exige Docker disponivel, pois sobe PostgreSQL efemero via Testcontainers.
 
 Gate opt-in de Native AOT:
 
@@ -102,6 +106,7 @@ CI de hardening:
 - O mesmo workflow permite rodar manualmente o gate Native AOT com `workflow_dispatch` e `run_native_aot=true`.
 - O mesmo workflow permite rodar manualmente o smoke Playwright com `workflow_dispatch` e `run_playwright=true`.
 - O mesmo workflow permite rodar manualmente os testes PostgreSQL/Testcontainers com `workflow_dispatch` e `run_integration_tests=true`.
+- O mesmo workflow permite rodar manualmente o benchmark PostgreSQL do FeatureStore com `workflow_dispatch` e `run_featurestore_benchmark=true`.
 - `.github/workflows/dotnet.yml` fica restrito ao build/test padrão; Native AOT permanece no gate manual opt-in.
 
 ## Documentação
