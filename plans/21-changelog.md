@@ -2,6 +2,7 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-21 | Adicionado comando `refresh` ao `CryptoTrading.RagTool` para recriar coleções de docs/código no Qdrant e evitar chunks obsoletos após mudanças grandes |
 | 2026-05-21 | Alinhamento do relatório de hardening e fallback do dashboard ao benchmark opt-in `FeatureStore.GetMarketDataPointsAsync`, incluindo risco operacional e teste unitário de regressão |
 | 2026-05-21 | Conversão do benchmark `FeatureStore.GetMarketDataPointsAsync` de registro opt-in para execução real com PostgreSQL/Testcontainers e acionamento manual no workflow de hardening |
 | 2026-05-21 | Criação do gate opt-in Testcontainers/PostgreSQL para integração real do FeatureStore com execução manual no workflow de hardening |

@@ -33,6 +33,9 @@ O robô possui uma ferramenta nativa em C# (`CryptoTrading.RagTool`) que analisa
 ```bash
 # Executar a indexação/ingestão completa no Qdrant
 dotnet run --project tools/CryptoTrading.RagTool -- ingest
+
+# Recriar docs/código no Qdrant e evitar chunks antigos após mudanças grandes
+dotnet run --project tools/CryptoTrading.RagTool -- refresh
 ```
 
 ### Passo 2.3: Busca Semântica na Memória Técnica (Query)

@@ -28,7 +28,11 @@ public static class Program
             switch (command)
             {
                 case "ingest":
-                    await RunIngestionAsync(repoRoot);
+                    await RunIngestionAsync(repoRoot, resetIndexedCollections: false);
+                    break;
+
+                case "refresh":
+                    await RunIngestionAsync(repoRoot, resetIndexedCollections: true);
                     break;
 
                 case "query":
@@ -76,6 +80,7 @@ public static class Program
         Console.WriteLine("  dotnet run --project tools/CryptoTrading.RagTool -- <comando> [argumentos]");
         Console.WriteLine("\nComandos:");
         Console.WriteLine("  ingest                  Lê todos os planos e indexa no Qdrant.");
+        Console.WriteLine("  refresh                 Recria docs/código no Qdrant e executa ingestão limpa.");
         Console.WriteLine("  query \"<pergunta>\"      Realiza busca semântica por documentos relevantes.");
         Console.WriteLine("  optimize \"<pedido>\"     Gera um prompt completo e estruturado para agentes de IA.");
         Console.WriteLine("============================================================\n");
@@ -108,9 +113,11 @@ public static class Program
         throw new InvalidOperationException("Não foi possível encontrar a raiz do repositório (com a pasta 'plans' e o 'README.md').");
     }
 
-    private static async Task RunIngestionAsync(string repoRoot)
+    private static async Task RunIngestionAsync(string repoRoot, bool resetIndexedCollections)
     {
-        Console.WriteLine("\n=== INICIANDO INGESTÃO DE PLANOS & DOCUMENTOS ===");
+        Console.WriteLine(resetIndexedCollections
+            ? "\n=== INICIANDO REFRESH LIMPO DO RAG ==="
+            : "\n=== INICIANDO INGESTÃO DE PLANOS & DOCUMENTOS ===");
 
         // 1. Inicializa Serviços
         using var qdrant = new QdrantService();
@@ -118,6 +125,10 @@ public static class Program
 
         // Inicializa coleções
         await qdrant.InitializeCollectionsAsync();
+        if (resetIndexedCollections)
+        {
+            await qdrant.RefreshIndexedCollectionsAsync();
+        }
 
         // 2. Coleta arquivos markdown
         var plansDir = Path.Combine(repoRoot, "plans");

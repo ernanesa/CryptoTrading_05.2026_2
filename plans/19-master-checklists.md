@@ -159,6 +159,25 @@ Contexto encontrado: hardening report mantinha testes de integração como opt-i
 Impacto: Criado e validado projeto de integração opt-in para validar schema, escrita e leitura do FeatureStore em PostgreSQL efêmero via Testcontainers.
 Data: 2026-05-21
 
+## Refresh limpo do RAG — Qdrant docs/código
+
+- [x] data atual verificada: 2026-05-21 23:46:29 -03 / America/Maceio;
+- [x] plano e regras operacionais consultados;
+- [x] RAG local consultado e identificado com conteúdo defasado;
+- [x] documentação oficial não aplicável, pois a atividade usa APIs do Qdrant Client já adotadas no projeto;
+- [x] entrega de valor definida: evitar que chunks antigos sobrevivam após reindexações do RAG;
+- [x] critérios de aceite definidos: comando `refresh`, recriação apenas de `cryptotrading_docs` e `cryptotrading_code`, preservação das coleções de decisões/prompts/tarefas e documentação atualizada;
+- [x] riscos listados: refresh remove e recria memória semântica derivada de arquivos, exigindo Qdrant local disponível;
+- [x] testes esperados definidos e executados: `dotnet run --project tools/CryptoTrading.RagTool -- refresh`, query RAG de validação, `dotnet test`, `npm run build` e `git diff --check`.
+
+### Registro do refresh limpo do RAG
+
+RAG consultado: sim
+Consulta: proxima etapa hardening report dashboard backend divergencia riscos opt-in gates release candidate
+Contexto encontrado: RAG retornou trecho antigo de riscos conhecidos, indicando necessidade de reindexação limpa após mudanças recentes.
+Impacto: `CryptoTrading.RagTool` ganhou comando `refresh` para recriar coleções derivadas de documentação/código antes da ingestão, reduzindo risco de respostas semânticas obsoletas.
+Data: 2026-05-21
+
 ## Sincronização hardening — FeatureStore benchmark
 
 - [x] data atual verificada: 2026-05-21 23:43:19 -03 / America/Maceio;

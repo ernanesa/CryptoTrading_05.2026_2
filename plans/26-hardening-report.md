@@ -206,3 +206,30 @@ Critérios de aceite:
 - teste unitário cobre o risco e o comando do benchmark.
 
 Riscos: manter a UI ou o relatório fora de sincronia pode mascarar gates opt-in que dependem de infraestrutura específica.
+
+## Refresh limpo do RAG
+
+Data: 2026-05-21.
+
+Consulta RAG: `proxima etapa hardening report dashboard backend divergencia riscos opt-in gates release candidate`.
+
+Contexto recuperado: a consulta retornou trecho antigo de riscos conhecidos, sinalizando que upserts sucessivos poderiam manter chunks obsoletos no Qdrant.
+
+Entrega de valor: `CryptoTrading.RagTool` agora oferece o comando `refresh`, que recria apenas as coleções derivadas de docs/código (`cryptotrading_docs` e `cryptotrading_code`) antes de executar a ingestão completa.
+
+Critérios de aceite:
+
+- `ingest` continua disponível para upsert incremental;
+- `refresh` recria docs/código e preserva coleções de decisões, prompts, tarefas e referências externas;
+- README local documenta quando usar refresh;
+- validação inclui query RAG após refresh.
+
+Riscos: exige Qdrant local disponível; por recriar docs/código, deve ser usado como operação explícita após mudanças relevantes de documentação ou código.
+
+Evidencia local:
+
+- `dotnet run --project tools/CryptoTrading.RagTool -- refresh`: recriou `cryptotrading_docs` e `cryptotrading_code`, indexando 322 chunks de documentação e 300 chunks de código.
+- `dotnet run --project tools/CryptoTrading.RagTool -- query "Refresh limpo do RAG Qdrant docs codigo chunks obsoletos"`: retornou o novo registro do checklist como primeiro resultado.
+- `dotnet test`: 47 testes passaram.
+- `npm run build`: dashboard compilou em produção.
+- `git diff --check`: sem problemas de whitespace.

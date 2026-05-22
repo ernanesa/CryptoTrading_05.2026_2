@@ -8,6 +8,23 @@ namespace CryptoTrading.RagTool;
 
 public class QdrantService : IDisposable
 {
+    private const ulong EmbeddingSize = 384;
+    private static readonly string[] Collections =
+    {
+        "cryptotrading_docs",
+        "cryptotrading_code",
+        "cryptotrading_decisions",
+        "cryptotrading_prompts",
+        "cryptotrading_tasks",
+        "cryptotrading_external_refs"
+    };
+
+    private static readonly string[] IndexedCollections =
+    {
+        "cryptotrading_docs",
+        "cryptotrading_code"
+    };
+
     private readonly QdrantClient _client;
 
     public QdrantService(string host = "localhost", int port = 6334)
@@ -18,36 +35,13 @@ public class QdrantService : IDisposable
 
     public async Task InitializeCollectionsAsync()
     {
-        var collections = new[]
-        {
-            "cryptotrading_docs",
-            "cryptotrading_code",
-            "cryptotrading_decisions",
-            "cryptotrading_prompts",
-            "cryptotrading_tasks",
-            "cryptotrading_external_refs"
-        };
-
         Console.WriteLine("Verificando/Criando coleções no Qdrant...");
 
-        foreach (var col in collections)
+        foreach (var col in Collections)
         {
             try
             {
-                var exists = await _client.CollectionExistsAsync(col);
-                if (!exists)
-                {
-                    Console.WriteLine($"Criando coleção: {col} (Dimensão: 384, Distância: Cosine)...");
-                    await _client.CreateCollectionAsync(
-                        collectionName: col,
-                        vectorsConfig: new VectorParams
-                        {
-                            Size = 384,
-                            Distance = Distance.Cosine
-                        }
-                    );
-                }
-                else
+                if (await EnsureCollectionAsync(col))
                 {
                     Console.WriteLine($"Coleção já existe: {col}");
                     var info = await _client.GetCollectionInfoAsync(col);
@@ -59,6 +53,50 @@ public class QdrantService : IDisposable
                 Console.WriteLine($"Erro ao gerenciar coleção '{col}': {ex.Message}");
             }
         }
+    }
+
+    public async Task RefreshIndexedCollectionsAsync()
+    {
+        Console.WriteLine("Recriando coleções indexadas de documentação/código no Qdrant...");
+
+        foreach (var col in IndexedCollections)
+        {
+            try
+            {
+                if (await _client.CollectionExistsAsync(col))
+                {
+                    Console.WriteLine($"Removendo coleção indexada: {col}");
+                    await _client.DeleteCollectionAsync(col);
+                }
+
+                await EnsureCollectionAsync(col);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao recriar coleção '{col}': {ex.Message}");
+            }
+        }
+    }
+
+    private async Task<bool> EnsureCollectionAsync(string collectionName)
+    {
+        var exists = await _client.CollectionExistsAsync(collectionName);
+        if (exists)
+        {
+            return true;
+        }
+
+        Console.WriteLine($"Criando coleção: {collectionName} (Dimensão: {EmbeddingSize}, Distância: Cosine)...");
+        await _client.CreateCollectionAsync(
+            collectionName: collectionName,
+            vectorsConfig: new VectorParams
+            {
+                Size = EmbeddingSize,
+                Distance = Distance.Cosine
+            }
+        );
+
+        return false;
     }
 
     public async Task UpsertChunksAsync(string collectionName, List<(MarkdownChunk Chunk, float[] Vector)> data)
