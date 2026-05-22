@@ -41,6 +41,7 @@ public class HardeningTests
         Assert.All(report.Gates, gate => Assert.True(gate.Passed));
         Assert.NotEmpty(report.Benchmarks);
         Assert.NotEmpty(report.KnownRisks);
+        Assert.Contains(report.KnownRisks, risk => risk.Area == "FeatureStore benchmark");
         Assert.NotEmpty(report.Alerts);
     }
 
@@ -52,6 +53,9 @@ public class HardeningTests
         var benchmarks = catalog.Build();
 
         Assert.Contains(benchmarks, b => b.Name == "IndicatorService.CalculateFeatures");
+        Assert.Contains(benchmarks, b => b.Name == "FeatureStore.GetMarketDataPointsAsync"
+            && b.Command.Contains("--iterations 3")
+            && b.Tool.Contains("Testcontainers"));
         Assert.Contains(benchmarks, b => b.Command.Contains("tools/benchmarks/CryptoTrading.Benchmarks"));
         Assert.All(benchmarks, b => Assert.False(string.IsNullOrWhiteSpace(b.Command)));
     }

@@ -121,8 +121,8 @@ public class BenchmarkCatalog
             {
                 Name = "FeatureStore.GetMarketDataPointsAsync",
                 Target = "Dapper/Npgsql read path latency for backtests and orchestration.",
-                Tool = "Local benchmark harness + PostgreSQL fixture",
-                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore*"
+                Tool = "Local benchmark harness + PostgreSQL Testcontainers fixture",
+                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore* --iterations 3"
             },
             new()
             {
@@ -217,6 +217,12 @@ public class HardeningReportService
                 Area = "Integration tests",
                 Risk = "Testcontainers depends on Docker availability in the host.",
                 Mitigation = "Keep integration tests as opt-in until Docker is guaranteed in CI runners."
+            },
+            new()
+            {
+                Area = "FeatureStore benchmark",
+                Risk = "PostgreSQL benchmark depends on Docker availability in the host.",
+                Mitigation = "Keep FeatureStore benchmark as workflow_dispatch opt-in with run_featurestore_benchmark=true."
             },
             new()
             {

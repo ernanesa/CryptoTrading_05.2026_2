@@ -159,6 +159,24 @@ Contexto encontrado: hardening report mantinha testes de integração como opt-i
 Impacto: Criado e validado projeto de integração opt-in para validar schema, escrita e leitura do FeatureStore em PostgreSQL efêmero via Testcontainers.
 Data: 2026-05-21
 
+## Sincronização hardening — FeatureStore benchmark
+
+- [x] data atual verificada: 2026-05-21 23:43:19 -03 / America/Maceio;
+- [x] plano, hardening report e RAG consultados;
+- [x] documentação oficial não aplicável, pois não houve nova tecnologia/biblioteca;
+- [x] entrega de valor definida: alinhar API, dashboard e testes ao benchmark opt-in já implementado;
+- [x] critérios de aceite definidos: catálogo backend registra comando real com Testcontainers, risco aparece no relatório, fallback do dashboard fica coerente e teste unitário cobre regressão;
+- [x] riscos listados: divergência entre documentação, API e dashboard pode esconder dependência operacional de Docker;
+- [x] testes esperados definidos: `dotnet test`, `npm run build` e `git diff --check`.
+
+### Registro da sincronização hardening FeatureStore
+
+RAG consultado: sim
+Consulta: proximas etapas pendentes hardening checklists dashboard FeatureStore benchmark CI riscos M8
+Contexto encontrado: M8 e hardening estavam concluídos, com riscos opt-in documentados; a superfície backend/dashboard ainda precisava refletir o novo benchmark FeatureStore.
+Impacto: `HardeningReportService`, fallback do dashboard e testes unitários passaram a expor o benchmark PostgreSQL opt-in e seu risco operacional de Docker.
+Data: 2026-05-21
+
 ## Benchmark opt-in FeatureStore — PostgreSQL
 
 - [x] data atual verificada: 2026-05-21 23:34:27 -03 / America/Maceio;

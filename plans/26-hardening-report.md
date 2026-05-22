@@ -189,3 +189,20 @@ Evidencia local:
 - `dotnet test`: 47 testes passaram.
 - `npm run build`: dashboard compilou em produção.
 - `git diff --check`: sem problemas de whitespace.
+
+## Sincronização hardening FeatureStore
+
+Data: 2026-05-21.
+
+Consulta RAG: `proximas etapas pendentes hardening checklists dashboard FeatureStore benchmark CI riscos M8`.
+
+Entrega de valor: alinhar `HardeningReportService`, fallback do dashboard e testes unitários ao benchmark opt-in do FeatureStore, evitando divergência entre documentação, API e UI quando a API ainda não carregou.
+
+Critérios de aceite:
+
+- catálogo backend registra `FeatureStore.GetMarketDataPointsAsync` com fixture PostgreSQL/Testcontainers e `--iterations 3`;
+- riscos conhecidos incluem a dependência operacional de Docker do benchmark;
+- fallback inicial do dashboard exibe o benchmark e alerta correspondente;
+- teste unitário cobre o risco e o comando do benchmark.
+
+Riscos: manter a UI ou o relatório fora de sincronia pode mascarar gates opt-in que dependem de infraestrutura específica.

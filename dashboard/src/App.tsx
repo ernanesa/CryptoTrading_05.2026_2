@@ -341,7 +341,9 @@ export default function App() {
       { name: 'Native AOT opt-in', passed: true, evidence: 'API e Worker publicados via tools/validate-native-aot.sh.' }
     ],
     benchmarks: [
-      { name: 'AdaptiveStrategyOrchestrator.Decide', tool: 'BenchmarkDotNet', status: 'Registered' },
+      { name: 'IndicatorService.CalculateFeatures', tool: 'Local benchmark harness', status: 'Mandatory smoke' },
+      { name: 'AdaptiveStrategyOrchestrator.Decide', tool: 'Local benchmark harness', status: 'Mandatory smoke' },
+      { name: 'FeatureStore.GetMarketDataPointsAsync', tool: 'PostgreSQL Testcontainers fixture', status: 'Opt-in validated' },
       { name: 'ApiWorker.NativeAot.Publish', tool: 'Native AOT validation script', status: 'Opt-in validated' }
     ],
     chaosScenarios: [
@@ -349,9 +351,13 @@ export default function App() {
       { scenario: 'DataQualityGate blocked', passed: true }
     ],
     knownRisks: [
+      { area: 'FeatureStore benchmark', risk: 'Benchmark PostgreSQL depende de Docker no host/runner.', mitigation: 'Manter execução manual com run_featurestore_benchmark=true.' },
       { area: 'Native AOT', risk: 'Dapper e CryptoExchange.Net emitem warnings de trim/AOT no publish opt-in.', mitigation: 'Manter AOT manual e acompanhar dependencias antes de tornar gate obrigatorio.' }
     ],
-    alerts: ['Native AOT: warnings de compatibilidade rastreados no gate opt-in.']
+    alerts: [
+      'FeatureStore benchmark: Docker requerido para fixture PostgreSQL.',
+      'Native AOT: warnings de compatibilidade rastreados no gate opt-in.'
+    ]
   });
 
   const [systemLogs, setSystemLogs] = useState<string[]>([
