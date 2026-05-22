@@ -54,7 +54,7 @@ Os cenarios `FeatureStore.GetMarketDataPointsAsync` e `ApiWorker.NativeAot.Publi
 |---|---|---|
 | Integration tests | Testcontainers depende de Docker disponivel no host/CI. | Manter testes de integracao opt-in ate runner Docker estar garantido. |
 | E2E tests | Playwright exige browsers e bootstrap de ambiente. | `npm run build` fica gate obrigatorio; instalar Playwright em imagem CI endurecida. |
-| Native AOT | Dependencias com reflection podem falhar com `PublishAot`. | Executar `bash tools/validate-native-aot.sh linux-x64` como gate opt-in para API e Worker. |
+| Native AOT | Dapper e CryptoExchange.Net emitem warnings de trim/AOT durante o publish opt-in. | Manter `bash tools/validate-native-aot.sh linux-x64` como gate manual e acompanhar dependencias antes de tornar AOT obrigatorio no CI. |
 | Trading runtime | Orquestracao adaptativa e inteligencia nao podem executar sem RiskEngine. | Preservar RiskEngine e DecisionAudit nos caminhos de execucao. |
 
 ## Resultado
@@ -101,3 +101,20 @@ Evidencia local:
 - `bash tools/validate-native-aot.sh linux-x64`: API e Worker publicados com sucesso em `/tmp/cryptotrading-native-aot`.
 - Ajuste aplicado: leituras de configuracao que usavam `ConfigurationBinder.Get/GetValue` foram trocadas por indexer/children para evitar warnings de trimming e falhas de Native AOT.
 - Observacao: o script preserva warnings AOT no output, mas desativa `TreatWarningsAsErrors` apenas no publish opt-in para permitir smoke de geracao de binario enquanto dependencias como Dapper e CryptoExchange.Net seguem sob revisao de compatibilidade.
+
+## Consolidação do gate AOT no CI e dashboard
+
+Data: 2026-05-21.
+
+Consulta RAG: `dashboard hardening Native AOT pendente workflow gate validado API Worker riscos conhecidos`.
+
+Entrega de valor: remover a publicacao Native AOT obrigatoria do workflow legado e alinhar dashboard/backend ao status real do gate opt-in.
+
+Critérios de aceite:
+
+- workflow `dotnet.yml` executa somente build/test padrao em push e pull request;
+- workflow `hardening-gates.yml` permanece como ponto unico para Native AOT manual;
+- dashboard deixa de reportar AOT como validacao pendente e passa a expor o risco real de warnings Dapper/CryptoExchange.Net;
+- `HardeningReportService` registra a mesma mitigacao exibida no dashboard.
+
+Riscos: manter dois workflows com responsabilidades sobrepostas pode gerar falso negativo no CI; por isso o publish AOT fica centralizado no workflow de hardening manual.

@@ -337,23 +337,25 @@ export default function App() {
     gates: [
       { name: 'build limpo', passed: true, evidence: 'dotnet test compila todos os projetos.' },
       { name: 'testes limpos', passed: true, evidence: 'Suite xUnit verde.' },
-      { name: 'dashboard operacional', passed: true, evidence: 'npm run build verde.' }
+      { name: 'dashboard operacional', passed: true, evidence: 'npm run build verde.' },
+      { name: 'Native AOT opt-in', passed: true, evidence: 'API e Worker publicados via tools/validate-native-aot.sh.' }
     ],
     benchmarks: [
-      { name: 'AdaptiveStrategyOrchestrator.Decide', tool: 'BenchmarkDotNet', status: 'Registered' }
+      { name: 'AdaptiveStrategyOrchestrator.Decide', tool: 'BenchmarkDotNet', status: 'Registered' },
+      { name: 'ApiWorker.NativeAot.Publish', tool: 'Native AOT validation script', status: 'Opt-in validated' }
     ],
     chaosScenarios: [
       { scenario: 'RiskEngine halted', passed: true },
       { scenario: 'DataQualityGate blocked', passed: true }
     ],
     knownRisks: [
-      { area: 'Native AOT', risk: 'Validacao seletiva pendente por servico.', mitigation: 'Executar publish AOT por API/Worker.' }
+      { area: 'Native AOT', risk: 'Dapper e CryptoExchange.Net emitem warnings de trim/AOT no publish opt-in.', mitigation: 'Manter AOT manual e acompanhar dependencias antes de tornar gate obrigatorio.' }
     ],
-    alerts: ['Native AOT: Validacao seletiva pendente por servico.']
+    alerts: ['Native AOT: warnings de compatibilidade rastreados no gate opt-in.']
   });
 
   const [systemLogs, setSystemLogs] = useState<string[]>([
-    'System initialization successful. Target: .NET 10.0 Native AOT.',
+    'System initialization successful. Target: .NET 10.0 with Native AOT opt-in validated.',
     'FeatureStore schema validated. PostgreSQL connected.',
     'Binance Spot Testnet interface initialized. Mode: Dry-Run (Simulator).',
     'RiskEngine compiled. Cooldown rules active: 3 max daily losses, 5% max daily drawdown.',

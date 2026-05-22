@@ -227,8 +227,8 @@ public class HardeningReportService
             new()
             {
                 Area = "Native AOT",
-                Risk = "Reflection-heavy dependencies can fail under PublishAot.",
-                Mitigation = "Keep AOT selective and validate API/Worker independently after benchmarks."
+                Risk = "Dapper and CryptoExchange.Net emit trim/AOT analysis warnings during opt-in publish.",
+                Mitigation = "Keep Native AOT as a manual gate and track dependency warnings before promoting AOT to a required CI gate."
             },
             new()
             {

@@ -86,6 +86,7 @@ CI de hardening:
 
 - `.github/workflows/hardening-gates.yml` valida build, testes, dashboard e smoke benchmarks.
 - O mesmo workflow permite rodar manualmente o gate Native AOT com `workflow_dispatch` e `run_native_aot=true`.
+- `.github/workflows/dotnet.yml` fica restrito ao build/test padrão; Native AOT permanece no gate manual opt-in.
 
 ## Documentação
 

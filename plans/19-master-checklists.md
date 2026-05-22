@@ -141,6 +141,24 @@ Contexto encontrado: índices e descrições dos 11 ADRs recomendados que ainda 
 Impacto: Criados fisicamente os 11 arquivos de ADR na pasta plans/ descrevendo em detalhe toda a arquitetura, regras operacionais e decisões tomadas no projeto, com links ativos no índice geral.
 Data: 2026-05-21
 
+## Consolidação AOT — CI e Dashboard
+
+- [x] data atual verificada: 2026-05-21 23:07:56 -03 / America/Maceio;
+- [x] plano, hardening report e RAG consultados;
+- [x] documentação oficial não reaplicada, pois a decisão técnica Native AOT já foi validada na atividade anterior;
+- [x] entrega de valor definida: remover contradição entre gate AOT opt-in, workflow legado e dashboard;
+- [x] critérios de aceite definidos: CI padrão sem publish AOT obrigatório, hardening manual preservado e dashboard alinhado ao risco real;
+- [x] riscos listados: workflows sobrepostos podem gerar falso negativo ou bloquear PR por gate opt-in;
+- [x] testes esperados definidos: `dotnet test`, `npm run build`, `bash tools/validate-native-aot.sh linux-x64` e `git diff --check`.
+
+### Registro da consolidação AOT
+
+RAG consultado: sim
+Consulta: dashboard hardening Native AOT pendente workflow gate validado API Worker riscos conhecidos
+Contexto encontrado: gate opt-in Native AOT validado para API/Worker e hardening report registrando warnings de Dapper/CryptoExchange.Net.
+Impacto: Workflow legado `dotnet.yml` voltou a ser apenas build/test, Native AOT ficou centralizado no gate manual de hardening, e dashboard/backend passaram a refletir o status validado com risco de warnings rastreado.
+Data: 2026-05-21
+
 ## Gate opt-in Native AOT — API e Worker
 
 - [x] data atual verificada: 2026-05-21 22:43:40 -03 / America/Maceio;
