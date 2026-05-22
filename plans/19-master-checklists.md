@@ -141,6 +141,24 @@ Contexto encontrado: índices e descrições dos 11 ADRs recomendados que ainda 
 Impacto: Criados fisicamente os 11 arquivos de ADR na pasta plans/ descrevendo em detalhe toda a arquitetura, regras operacionais e decisões tomadas no projeto, com links ativos no índice geral.
 Data: 2026-05-21
 
+## Gate opt-in Playwright — Dashboard E2E
+
+- [x] data atual verificada: 2026-05-21 23:20:16 -03 / America/Maceio;
+- [x] plano, hardening report e RAG consultados;
+- [x] documentação oficial Playwright consultada;
+- [x] entrega de valor definida: smoke E2E manual do dashboard para hardening e risco;
+- [x] critérios de aceite definidos: config Playwright, teste smoke, script npm e workflow manual opt-in;
+- [x] riscos listados: browsers Playwright dependem de bootstrap e pacotes do runner;
+- [x] testes esperados definidos: `npm run build`, `npm run test:e2e`, `dotnet test` e `git diff --check`.
+
+### Registro do gate opt-in Playwright
+
+RAG consultado: sim
+Consulta: dashboard Playwright E2E opt-in hardening smoke test
+Contexto encontrado: M8 registrava E2E Playwright como opt-in e hardening report mantinha risco por bootstrap de browsers.
+Impacto: Criado harness Playwright do dashboard com smoke test de overview/hardening/risco e acionamento manual no workflow de hardening.
+Data: 2026-05-21
+
 ## Consolidação AOT — CI e Dashboard
 
 - [x] data atual verificada: 2026-05-21 23:07:56 -03 / America/Maceio;

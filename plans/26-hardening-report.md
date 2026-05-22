@@ -53,7 +53,7 @@ Os cenarios `FeatureStore.GetMarketDataPointsAsync` e `ApiWorker.NativeAot.Publi
 | Area | Risco | Mitigacao |
 |---|---|---|
 | Integration tests | Testcontainers depende de Docker disponivel no host/CI. | Manter testes de integracao opt-in ate runner Docker estar garantido. |
-| E2E tests | Playwright exige browsers e bootstrap de ambiente. | `npm run build` fica gate obrigatorio; instalar Playwright em imagem CI endurecida. |
+| E2E tests | Playwright exige browsers e bootstrap de ambiente. | `npm run build` fica gate obrigatorio; `npm run test:e2e` fica gate manual opt-in no workflow de hardening. |
 | Native AOT | Dapper e CryptoExchange.Net emitem warnings de trim/AOT durante o publish opt-in. | Manter `bash tools/validate-native-aot.sh linux-x64` como gate manual e acompanhar dependencias antes de tornar AOT obrigatorio no CI. |
 | Trading runtime | Orquestracao adaptativa e inteligencia nao podem executar sem RiskEngine. | Preservar RiskEngine e DecisionAudit nos caminhos de execucao. |
 
@@ -118,3 +118,22 @@ Critérios de aceite:
 - `HardeningReportService` registra a mesma mitigacao exibida no dashboard.
 
 Riscos: manter dois workflows com responsabilidades sobrepostas pode gerar falso negativo no CI; por isso o publish AOT fica centralizado no workflow de hardening manual.
+
+## Gate opt-in de Playwright
+
+Data: 2026-05-21.
+
+Consulta RAG: `dashboard Playwright E2E opt-in hardening smoke test`.
+
+Fonte oficial consultada: Playwright Installation e Setting up CI. Contexto aplicado: Playwright Test é o runner E2E oficial, roda via `npx playwright test`, e em CI requer instalação dos browsers com `npx playwright install --with-deps`.
+
+Entrega de valor: smoke E2E do dashboard validando renderização do overview, exposição dos gates de hardening e navegação para a tela de risco.
+
+Critérios de aceite:
+
+- `dashboard/playwright.config.ts` usa Vite preview como `webServer`;
+- `dashboard/tests/e2e/dashboard-smoke.spec.ts` cobre overview, hardening e RiskEngine;
+- `npm run test:e2e` executa o smoke local quando browsers Playwright estiverem instalados;
+- workflow `hardening-gates.yml` oferece execução manual com `run_playwright=true`, sem bloquear push/pull request padrão.
+
+Riscos: browsers Playwright aumentam tempo de bootstrap e dependem de pacotes do sistema no runner; por isso o gate permanece manual/opt-in.

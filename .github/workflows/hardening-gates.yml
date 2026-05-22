@@ -7,6 +7,14 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
     inputs:
+      run_playwright:
+        description: 'Run opt-in Playwright dashboard smoke test'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
       run_native_aot:
         description: 'Run opt-in Native AOT publish validation'
         required: false
@@ -56,6 +64,16 @@ jobs:
       - name: Build dashboard
         working-directory: dashboard
         run: npm run build
+
+      - name: Install Playwright browser
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_playwright == 'true' }}
+        working-directory: dashboard
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright dashboard smoke
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_playwright == 'true' }}
+        working-directory: dashboard
+        run: npm run test:e2e
 
       - name: Run adaptive benchmark smoke
         run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*' --iterations 3

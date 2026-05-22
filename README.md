@@ -82,10 +82,19 @@ Gate opt-in de Native AOT:
 bash tools/validate-native-aot.sh linux-x64
 ```
 
+Smoke E2E opt-in do dashboard:
+
+```bash
+cd dashboard
+npx playwright install chromium
+npm run test:e2e
+```
+
 CI de hardening:
 
 - `.github/workflows/hardening-gates.yml` valida build, testes, dashboard e smoke benchmarks.
 - O mesmo workflow permite rodar manualmente o gate Native AOT com `workflow_dispatch` e `run_native_aot=true`.
+- O mesmo workflow permite rodar manualmente o smoke Playwright com `workflow_dispatch` e `run_playwright=true`.
 - `.github/workflows/dotnet.yml` fica restrito ao build/test padrão; Native AOT permanece no gate manual opt-in.
 
 ## Documentação
