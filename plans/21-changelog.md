@@ -2,6 +2,7 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-21 | Criação do gate opt-in de Native AOT para API e Worker com script local e acionamento manual no workflow de hardening |
 | 2026-05-21 | Revalidação pós-M8 dos gates locais com RAG consultado, testes unitários, build do dashboard e smoke benchmark adaptativo registrados |
 | 2026-05-21 | Ingestão e persistência bem-sucedidas de dados históricos e em tempo real (candles e features técnicos) no PostgreSQL local para BTCUSDT e ETHUSDT |
 | 2026-05-21 | Implementação do endpoint de seed `/api/paper/seed` para popular carteiras virtuais, trades reais e auditorias de risco (APPROVED/REJECTED) para demonstração no painel |

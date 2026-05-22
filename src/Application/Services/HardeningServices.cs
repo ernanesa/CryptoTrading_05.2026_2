@@ -133,10 +133,10 @@ public class BenchmarkCatalog
             },
             new()
             {
-                Name = "Api.NativeAot.Publish",
-                Target = "Selective AOT compatibility gate for API.",
-                Tool = "dotnet publish",
-                Command = "dotnet publish src/Api/CryptoTrading.Api.csproj -c Release -r linux-x64 /p:PublishAot=true"
+                Name = "ApiWorker.NativeAot.Publish",
+                Target = "Selective AOT compatibility gate for API and Worker.",
+                Tool = "Local Native AOT validation script",
+                Command = "bash tools/validate-native-aot.sh linux-x64"
             }
         };
     }

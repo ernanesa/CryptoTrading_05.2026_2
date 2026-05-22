@@ -28,10 +28,10 @@ public class BinanceTestnetExecutor
         _logger = _loggerInst;
         _metrics = metrics;
 
-        // Configurações do ambiente Binance Testnet
-        _isEnabled = configuration.GetValue<bool>("Binance:Testnet:Enabled", false);
-        _apiKey = configuration.GetValue<string>("Binance:Testnet:ApiKey", "placeholder_key") ?? string.Empty;
-        _apiSecret = configuration.GetValue<string>("Binance:Testnet:ApiSecret", "placeholder_secret") ?? string.Empty;
+        // Configuracoes lidas sem ConfigurationBinder para manter compatibilidade Native AOT.
+        _isEnabled = bool.TryParse(configuration["Binance:Testnet:Enabled"], out var enabled) && enabled;
+        _apiKey = configuration["Binance:Testnet:ApiKey"] ?? "placeholder_key";
+        _apiSecret = configuration["Binance:Testnet:ApiSecret"] ?? "placeholder_secret";
     }
 
     public bool IsEnabled => _isEnabled;

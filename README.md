@@ -76,9 +76,16 @@ Benchmarks locais:
 dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*'
 ```
 
+Gate opt-in de Native AOT:
+
+```bash
+bash tools/validate-native-aot.sh linux-x64
+```
+
 CI de hardening:
 
 - `.github/workflows/hardening-gates.yml` valida build, testes, dashboard e smoke benchmarks.
+- O mesmo workflow permite rodar manualmente o gate Native AOT com `workflow_dispatch` e `run_native_aot=true`.
 
 ## Documentação
 

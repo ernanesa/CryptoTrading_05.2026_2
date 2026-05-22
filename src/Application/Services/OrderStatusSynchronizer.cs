@@ -12,7 +12,7 @@ public class OrderStatusSynchronizer
     public OrderStatusSynchronizer(IFeatureStore store, IConfiguration configuration)
     {
         _store = store;
-        _isEnabled = configuration.GetValue<bool>("Binance:Testnet:Enabled", false);
+        _isEnabled = bool.TryParse(configuration["Binance:Testnet:Enabled"], out var enabled) && enabled;
     }
 
     public async Task<int> SynchronizeActiveOrdersAsync()

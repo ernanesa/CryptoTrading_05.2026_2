@@ -25,9 +25,11 @@ public class Worker(
         await featureStore.InitializeSchemaAsync();
         logger.LogInformation("[M1] Schema do PostgreSQL inicializado com sucesso.");
 
-        var symbols = configuration.GetSection("MarketData:Symbols").Get<string[]>() ?? ["BTCUSDT", "ETHUSDT"];
-        var intervals = configuration.GetSection("MarketData:Intervals").Get<string[]>() ?? ["1m"];
-        var intervalSeconds = configuration.GetValue("MarketData:PollingIntervalSeconds", 60);
+        var symbols = ReadStringArray("MarketData:Symbols", ["BTCUSDT", "ETHUSDT"]);
+        var intervals = ReadStringArray("MarketData:Intervals", ["1m"]);
+        var intervalSeconds = int.TryParse(configuration["MarketData:PollingIntervalSeconds"], out var configuredSeconds)
+            ? configuredSeconds
+            : 60;
 
         logger.LogInformation("[M1] Monitorando {count} pares nos intervalos: {intervals}",
             symbols.Length, string.Join(", ", intervals));
@@ -118,5 +120,18 @@ public class Worker(
             logger.LogInformation("[M1] {count} features calculadas e persistidas para {symbol}/{interval}.",
                 features.Count, symbol, interval);
         }
+    }
+
+    private string[] ReadStringArray(string sectionName, string[] fallback)
+    {
+        var values = configuration
+            .GetSection(sectionName)
+            .GetChildren()
+            .Select(child => child.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .ToArray();
+
+        return values.Length == 0 ? fallback : values;
     }
 }

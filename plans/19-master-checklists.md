@@ -141,6 +141,25 @@ Contexto encontrado: índices e descrições dos 11 ADRs recomendados que ainda 
 Impacto: Criados fisicamente os 11 arquivos de ADR na pasta plans/ descrevendo em detalhe toda a arquitetura, regras operacionais e decisões tomadas no projeto, com links ativos no índice geral.
 Data: 2026-05-21
 
+## Gate opt-in Native AOT — API e Worker
+
+- [x] data atual verificada: 2026-05-21 22:43:40 -03 / America/Maceio;
+- [x] plano e ADR-004 consultados;
+- [x] RAG local consultado;
+- [x] documentação oficial Microsoft Learn consultada para Native AOT;
+- [x] entrega de valor definida: comando unico para validar publicacao Native AOT seletiva de API e Worker;
+- [x] critérios de aceite definidos: script local, workflow manual opt-in, documentacao atualizada e gate sem impacto no fluxo padrao;
+- [x] riscos listados: toolchain/RID Native AOT dependem do ambiente de execucao;
+- [x] testes esperados definidos e executados: `bash tools/validate-native-aot.sh linux-x64`, `dotnet test` e `npm run build`.
+
+### Registro do gate opt-in Native AOT
+
+RAG consultado: sim
+Consulta: Native AOT seletivo API Worker hardening gate opt-in publish validação pós M8
+Contexto encontrado: ADR-004 exige AOT seletivo, validado explicitamente por serviço, sem impor AOT global.
+Impacto: Criado e validado gate local opt-in para publicar API e Worker com `PublishAot=true`, com acionamento manual no workflow de hardening. O código de leitura de configuração foi ajustado para evitar `ConfigurationBinder.Get/GetValue` em caminhos publicados com Native AOT.
+Data: 2026-05-21
+
 ## Verificação e Fechamento de Checklists (MCP, RAG e Risk)
 
 - [x] plans/17-risk-management.md critérios de risco verificados e validados;
