@@ -1,6 +1,7 @@
 # 26 — Hardening Report
 
 Data-base: **2026-05-20 UTC-03 / America/Maceio**.
+Última revalidação local: **2026-05-21 UTC-03 / America/Maceio**.
 
 ## Objetivo
 
@@ -59,3 +60,19 @@ Os cenarios `FeatureStore.GetMarketDataPointsAsync` e `Api.NativeAot.Publish` se
 ## Resultado
 
 M8 concluida como hardening operacional inicial. Os gates estao expostos em `/api/hardening/report` e visiveis no dashboard.
+
+## Revalidação pós-M8
+
+Consulta RAG: `proxima etapa apos M8 Hardening checklist pendente validacao build testes documentacao`.
+
+Contexto recuperado: M8 concluida, hardening checklist completo e necessidade de manter registro de data, criterios de aceite, riscos e testes antes de novas atividades.
+
+Evidencias locais em 2026-05-21:
+
+- `dotnet test`: 47 testes passaram, 0 falhas, 0 ignorados.
+- `npm run build` em `dashboard/`: TypeScript e Vite build passaram.
+- `dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*'`: `AdaptiveStrategyOrchestrator.Decide` passou com media local de 0.1855 ms.
+
+Escopo: checkpoint documental e de readiness; sem alteracao comportamental no runtime.
+
+Riscos remanescentes: testes com Testcontainers/PostgreSQL, E2E Playwright e publish Native AOT continuam opt-in por dependerem de ambiente especifico.

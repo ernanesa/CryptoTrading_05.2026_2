@@ -167,3 +167,21 @@ Contexto encontrado: critérios de aceitação para o dashboard de monitoramento
 Impacto: Verificados e validados os critérios de aceitação do Dashboard React e telemetria de observabilidade no ASP.NET, marcando todos os itens como concluídos em total conformidade com a entrega operacional do MVP.
 Data: 2026-05-21
 
+## Checkpoint pós-M8 — Readiness operacional
+
+- [x] data atual verificada: 2026-05-21 22:40:13 -03 / America/Maceio;
+- [x] plano mestre consultado;
+- [x] RAG local consultado;
+- [x] documentação oficial avaliada como não aplicável, pois não houve alteração de API, biblioteca ou tecnologia;
+- [x] entrega de valor definida: revalidação local dos gates pós-M8 antes de avançar para novas ondas de evolução;
+- [x] critérios de aceite definidos: testes unitários limpos, dashboard compilando e benchmark adaptativo smoke passando;
+- [x] riscos listados: cenários opt-in de PostgreSQL/Testcontainers, Playwright e Native AOT continuam dependentes do ambiente;
+- [x] testes definidos e executados.
+
+### Registro do checkpoint pós-M8
+
+RAG consultado: sim
+Consulta: proxima etapa apos M8 Hardening checklist pendente validacao build testes documentacao
+Contexto encontrado: M8 concluída, checklist de hardening completo e regra geral de consulta/documentação antes de novas atividades.
+Impacto: Gate local pós-M8 revalidado com `dotnet test`, `npm run build` do dashboard e smoke benchmark de `AdaptiveStrategyOrchestrator.Decide`, sem mudança comportamental no runtime.
+Data: 2026-05-21

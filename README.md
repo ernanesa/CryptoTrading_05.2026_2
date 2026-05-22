@@ -68,7 +68,7 @@ M7 Adaptive Strategy Orchestration
 M8 Hardening
 ```
 
-Status atual: **M0 a M8 concluídos** em 2026-05-20, com relatório de hardening em [`plans/26-hardening-report.md`](./plans/26-hardening-report.md).
+Status atual: **M0 a M8 concluídos** em 2026-05-20, com revalidação local pós-M8 em 2026-05-21 registrada no relatório de hardening em [`plans/26-hardening-report.md`](./plans/26-hardening-report.md).
 
 Benchmarks locais:
 
