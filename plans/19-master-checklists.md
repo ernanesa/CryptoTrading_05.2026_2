@@ -141,6 +141,24 @@ Contexto encontrado: índices e descrições dos 11 ADRs recomendados que ainda 
 Impacto: Criados fisicamente os 11 arquivos de ADR na pasta plans/ descrevendo em detalhe toda a arquitetura, regras operacionais e decisões tomadas no projeto, com links ativos no índice geral.
 Data: 2026-05-21
 
+## Gate opt-in Testcontainers — FeatureStore PostgreSQL
+
+- [x] data atual verificada: 2026-05-21 23:29:06 -03 / America/Maceio;
+- [x] plano, hardening report e RAG consultados;
+- [x] documentação oficial Testcontainers for .NET consultada;
+- [x] entrega de valor definida: teste de integração real para persistência Dapper/Npgsql do FeatureStore;
+- [x] critérios de aceite definidos: projeto separado, PostgreSQL pinado, teste de roundtrip e workflow manual opt-in;
+- [x] riscos listados: Docker/imagem PostgreSQL dependem do ambiente;
+- [x] testes esperados definidos e executados: `dotnet test`, `dotnet test tests/IntegrationTests/CryptoTrading.IntegrationTests.csproj -c Release`, `npm run build` e `git diff --check`.
+
+### Registro do gate opt-in Testcontainers
+
+RAG consultado: sim
+Consulta: Testcontainers PostgreSQL opt-in integration tests FeatureStore hardening fixture
+Contexto encontrado: hardening report mantinha testes de integração como opt-in por dependerem de Docker.
+Impacto: Criado e validado projeto de integração opt-in para validar schema, escrita e leitura do FeatureStore em PostgreSQL efêmero via Testcontainers.
+Data: 2026-05-21
+
 ## Gate opt-in Playwright — Dashboard E2E
 
 - [x] data atual verificada: 2026-05-21 23:20:16 -03 / America/Maceio;

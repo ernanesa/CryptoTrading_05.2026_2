@@ -52,7 +52,7 @@ Os cenarios `FeatureStore.GetMarketDataPointsAsync` e `ApiWorker.NativeAot.Publi
 
 | Area | Risco | Mitigacao |
 |---|---|---|
-| Integration tests | Testcontainers depende de Docker disponivel no host/CI. | Manter testes de integracao opt-in ate runner Docker estar garantido. |
+| Integration tests | Testcontainers depende de Docker disponivel no host/CI. | `dotnet test tests/IntegrationTests/CryptoTrading.IntegrationTests.csproj -c Release` fica gate manual opt-in no workflow de hardening. |
 | E2E tests | Playwright exige browsers e bootstrap de ambiente. | `npm run build` fica gate obrigatorio; `npm run test:e2e` fica gate manual opt-in no workflow de hardening. |
 | Native AOT | Dapper e CryptoExchange.Net emitem warnings de trim/AOT durante o publish opt-in. | Manter `bash tools/validate-native-aot.sh linux-x64` como gate manual e acompanhar dependencias antes de tornar AOT obrigatorio no CI. |
 | Trading runtime | Orquestracao adaptativa e inteligencia nao podem executar sem RiskEngine. | Preservar RiskEngine e DecisionAudit nos caminhos de execucao. |
@@ -137,3 +137,26 @@ Critérios de aceite:
 - workflow `hardening-gates.yml` oferece execução manual com `run_playwright=true`, sem bloquear push/pull request padrão.
 
 Riscos: browsers Playwright aumentam tempo de bootstrap e dependem de pacotes do sistema no runner; por isso o gate permanece manual/opt-in.
+
+## Gate opt-in de Testcontainers/PostgreSQL
+
+Data: 2026-05-21.
+
+Consulta RAG: `Testcontainers PostgreSQL opt-in integration tests FeatureStore hardening fixture`.
+
+Fonte oficial consultada: Testcontainers for .NET PostgreSQL module e xUnit.net integration. Contexto aplicado: usar `Testcontainers.PostgreSql`, imagem PostgreSQL versionada e fixture xUnit para ciclo de vida do container.
+
+Entrega de valor: teste de integração real do `FeatureStore` contra PostgreSQL efêmero, cobrindo schema, persistência de candles/features e leitura via `GetMarketDataPointsAsync`.
+
+Critérios de aceite:
+
+- projeto `tests/IntegrationTests` separado da solution principal para manter `dotnet test` leve;
+- teste usa `postgres:16-alpine` pinado;
+- workflow `hardening-gates.yml` oferece execução manual com `run_integration_tests=true`;
+- documentação registra comando opt-in e risco de dependência de Docker.
+
+Riscos: exige Docker disponível no host/runner e pode baixar imagem PostgreSQL; por isso não bloqueia push/pull request padrão.
+
+Evidencia local:
+
+- `dotnet test tests/IntegrationTests/CryptoTrading.IntegrationTests.csproj -c Release`: 1 teste passou contra PostgreSQL efêmero via Testcontainers.
