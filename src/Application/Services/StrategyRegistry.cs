@@ -14,6 +14,7 @@ public class StrategyRegistry
         Register(new RsiMeanReversionStrategy());
         Register(new BollingerMeanReversionStrategy());
         Register(new AtrBreakoutStrategy());
+        Register(new MacdAdxTrendFollowingStrategy());
     }
 
     public void Register(IStrategy strategy)

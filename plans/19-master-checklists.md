@@ -332,3 +332,22 @@ Consulta: proxima etapa apos M8 Hardening checklist pendente validacao build tes
 Contexto encontrado: M8 concluída, checklist de hardening completo e regra geral de consulta/documentação antes de novas atividades.
 Impacto: Gate local pós-M8 revalidado com `dotnet test`, `npm run build` do dashboard e smoke benchmark de `AdaptiveStrategyOrchestrator.Decide`, sem mudança comportamental no runtime.
 Data: 2026-05-21
+
+## Nova estratégia avançada — MACD ADX Trend Following (Pós-M8)
+
+- [x] data atual verificada: 2026-05-22 00:15:00 -03 / America/Maceio;
+- [x] plano, roadmap e regras operacionais consultados;
+- [x] RAG local consultado para confirmar suporte de features do orquestrador;
+- [x] documentação oficial e do repositório consultadas para formato de sinal e feature vectors;
+- [x] entrega de valor definida: criar e expor nova estratégia de alta performance focada em crossover MACD e filtragem ADX para orquestração adaptativa;
+- [x] critérios de aceite definidos: nova estratégia estende IStrategy, registrada no StrategyRegistry, suportada e pontuada no AdaptiveStrategyOrchestrator e StrategyScoringService, com 100% de cobertura de testes unitários;
+- [x] riscos listados: comportamento em range de mercado controlado por filtro ADX forte;
+- [x] testes definidos e executados: 6 novos cenários cobrindo Buy, Exit, Hold em warmup, Hold em ADX fraco e registro de serviço (todos validados com sucesso).
+
+### Registro do desenvolvimento da estratégia MACD ADX
+
+RAG consultado: sim
+Consulta: proxima atividade orquestracao adaptativa estrategias registradas performance tracker scoring
+Contexto encontrado: mapeamento de nomes de estratégias no tracker de performance e ScoringService da Stage 07.
+Impacto: Implementada nova estratégia `MacdAdxTrendFollowingStrategy`, registrada no `StrategyRegistry` e adicionada aos serviços de mapeamento e score de orquestração adaptativa, com suíte de testes xUnit verde e 0 warnings no build.
+Data: 2026-05-22

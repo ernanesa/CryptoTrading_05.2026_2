@@ -86,6 +86,7 @@ public class StrategyPerformanceTracker
         var baseScore = strategyName switch
         {
             "EMA Trend Following" => intelligence.FeatureVector.TrendScore,
+            "MACD ADX Trend Following" => (intelligence.FeatureVector.TrendScore + intelligence.FeatureVector.MomentumScore) / 2m,
             "ATR Breakout" => (intelligence.FeatureVector.TrendScore + intelligence.VolatilityForecast.ForecastScore) / 2m,
             "RSI Mean Reversion" => 100m - Math.Abs(intelligence.FeatureVector.MomentumScore - 50m) * 2m,
             "Bollinger Mean Reversion" => 100m - intelligence.FeatureVector.TrendScore,
@@ -138,6 +139,7 @@ public class StrategyScoringService
         return (strategyName, regime) switch
         {
             ("EMA Trend Following", "TrendingUp" or "TrendingDown") => 95m,
+            ("MACD ADX Trend Following", "TrendingUp" or "TrendingDown") => 98m,
             ("ATR Breakout", "HighVolatility" or "TrendingUp" or "TrendingDown") => 88m,
             ("RSI Mean Reversion", "Sideways") => 86m,
             ("Bollinger Mean Reversion", "Sideways") => 90m,
