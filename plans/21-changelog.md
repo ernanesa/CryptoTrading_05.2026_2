@@ -2,6 +2,7 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-21 | Revalidação e ingestão final no RAG local: verificação de compilação limpa (0 erros/avisos), 47 testes passando, build de produção do dashboard em Vite v8 bem-sucedido, reindexação total de 304 chunks de docs e 291 chunks de código no Qdrant, e sincronização completa com o GitHub |
 | 2026-05-21 | Criação do gate opt-in de Native AOT para API e Worker com script local e acionamento manual no workflow de hardening |
 | 2026-05-21 | Revalidação pós-M8 dos gates locais com RAG consultado, testes unitários, build do dashboard e smoke benchmark adaptativo registrados |
 | 2026-05-21 | Ingestão e persistência bem-sucedidas de dados históricos e em tempo real (candles e features técnicos) no PostgreSQL local para BTCUSDT e ETHUSDT |
