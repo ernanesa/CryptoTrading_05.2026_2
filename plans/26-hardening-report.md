@@ -233,3 +233,20 @@ Evidencia local:
 - `dotnet test`: 47 testes passaram.
 - `npm run build`: dashboard compilou em produção.
 - `git diff --check`: sem problemas de whitespace.
+
+## Status operacional dos benchmarks
+
+Data: 2026-05-21.
+
+Consulta RAG: `proxima atividade pendente apos refresh RAG hardening riscos known gaps dashboard backend testes`.
+
+Entrega de valor: o contrato `/api/hardening/report` agora diferencia benchmarks obrigatórios de smoke (`Mandatory smoke`) e validações manuais opt-in (`Opt-in validated`), e o dashboard mostra esses status junto com alertas operacionais.
+
+Critérios de aceite:
+
+- `BenchmarkCatalog` preenche `Status` para todos os benchmarks registrados;
+- testes unitários impedem regressão para status vazio ou genérico;
+- dashboard exibe benchmarks e alertas no card de hardening após carregar a API;
+- documentação registra o risco de apagar a distinção entre smoke obrigatório e gate opt-in.
+
+Riscos: se o status não for preservado no backend, a UI pode fazer gates manuais parecerem checks obrigatórios ou meramente registrados.

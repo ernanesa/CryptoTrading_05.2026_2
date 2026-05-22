@@ -566,6 +566,12 @@ export default function App() {
     }
   };
 
+  const benchmarkStatusClass = (status: string) => {
+    if (status.toLowerCase().includes('mandatory')) return 'success';
+    if (status.toLowerCase().includes('opt-in')) return 'warning';
+    return 'info';
+  };
+
   const triggerHalt = () => {
     setRiskEngineRules(prev => ({
       ...prev,
@@ -1096,6 +1102,19 @@ export default function App() {
                 <div className="intel-insights">
                   {hardening.gates.slice(0, 4).map((gate, i) => (
                     <div key={i}>{gate.name}: {gate.evidence}</div>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                  {hardening.benchmarks.slice(0, 4).map((benchmark, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
+                      <span style={{ color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>{benchmark.name}</span>
+                      <span className={`badge ${benchmarkStatusClass(benchmark.status)}`}>{benchmark.status}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="intel-insights" style={{ marginTop: 12 }}>
+                  {hardening.alerts.slice(0, 3).map((alert, i) => (
+                    <div key={i}>{alert}</div>
                   ))}
                 </div>
               </div>

@@ -53,10 +53,14 @@ public class HardeningTests
         var benchmarks = catalog.Build();
 
         Assert.Contains(benchmarks, b => b.Name == "IndicatorService.CalculateFeatures");
+        Assert.Contains(benchmarks, b => b.Name == "IndicatorService.CalculateFeatures" && b.Status == "Mandatory smoke");
         Assert.Contains(benchmarks, b => b.Name == "FeatureStore.GetMarketDataPointsAsync"
             && b.Command.Contains("--iterations 3")
-            && b.Tool.Contains("Testcontainers"));
+            && b.Tool.Contains("Testcontainers")
+            && b.Status == "Opt-in validated");
+        Assert.Contains(benchmarks, b => b.Name == "ApiWorker.NativeAot.Publish" && b.Status == "Opt-in validated");
         Assert.Contains(benchmarks, b => b.Command.Contains("tools/benchmarks/CryptoTrading.Benchmarks"));
         Assert.All(benchmarks, b => Assert.False(string.IsNullOrWhiteSpace(b.Command)));
+        Assert.All(benchmarks, b => Assert.False(string.IsNullOrWhiteSpace(b.Status)));
     }
 }

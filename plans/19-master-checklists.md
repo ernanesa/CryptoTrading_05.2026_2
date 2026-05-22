@@ -159,6 +159,25 @@ Contexto encontrado: hardening report mantinha testes de integração como opt-i
 Impacto: Criado e validado projeto de integração opt-in para validar schema, escrita e leitura do FeatureStore em PostgreSQL efêmero via Testcontainers.
 Data: 2026-05-21
 
+## Status operacional de benchmarks — Hardening
+
+- [x] data atual verificada: 2026-05-21 23:50:22 -03 / America/Maceio;
+- [x] plano e regras operacionais consultados;
+- [x] RAG local consultado após refresh limpo;
+- [x] documentação oficial não aplicável, pois não houve nova tecnologia/biblioteca;
+- [x] entrega de valor definida: preservar no contrato da API e no dashboard a diferença entre smoke obrigatório e gate opt-in;
+- [x] critérios de aceite definidos: `BenchmarkCatalog` popula `Status`, teste unitário cobre status e dashboard mostra benchmarks/alertas;
+- [x] riscos listados: perder status no fetch da API pode tornar gates opt-in indistinguíveis de registros genéricos;
+- [x] testes esperados definidos: `dotnet test`, `npm run build` e `git diff --check`.
+
+### Registro do status operacional de benchmarks
+
+RAG consultado: sim
+Consulta: proxima atividade pendente apos refresh RAG hardening riscos known gaps dashboard backend testes
+Contexto encontrado: hardening já tinha gates e riscos opt-in registrados; o contrato de benchmarks ainda carregava `Status` genérico ao vir da API.
+Impacto: API e dashboard passaram a diferenciar `Mandatory smoke` e `Opt-in validated`, com alerta operacional visível no card de hardening.
+Data: 2026-05-21
+
 ## Refresh limpo do RAG — Qdrant docs/código
 
 - [x] data atual verificada: 2026-05-21 23:46:29 -03 / America/Maceio;

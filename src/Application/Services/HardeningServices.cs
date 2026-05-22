@@ -115,28 +115,32 @@ public class BenchmarkCatalog
                 Name = "IndicatorService.CalculateFeatures",
                 Target = "Feature calculation throughput for candle batches.",
                 Tool = "Local benchmark harness (BenchmarkDotNet-ready)",
-                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Indicator*"
+                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Indicator*",
+                Status = "Mandatory smoke"
             },
             new()
             {
                 Name = "FeatureStore.GetMarketDataPointsAsync",
                 Target = "Dapper/Npgsql read path latency for backtests and orchestration.",
                 Tool = "Local benchmark harness + PostgreSQL Testcontainers fixture",
-                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore* --iterations 3"
+                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *FeatureStore* --iterations 3",
+                Status = "Opt-in validated"
             },
             new()
             {
                 Name = "AdaptiveStrategyOrchestrator.Decide",
                 Target = "Control Plane scoring and allocation latency.",
                 Tool = "Local benchmark harness (BenchmarkDotNet-ready)",
-                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Adaptive*"
+                Command = "dotnet run -c Release --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter *Adaptive*",
+                Status = "Mandatory smoke"
             },
             new()
             {
                 Name = "ApiWorker.NativeAot.Publish",
                 Target = "Selective AOT compatibility gate for API and Worker.",
                 Tool = "Local Native AOT validation script",
-                Command = "bash tools/validate-native-aot.sh linux-x64"
+                Command = "bash tools/validate-native-aot.sh linux-x64",
+                Status = "Opt-in validated"
             }
         };
     }
