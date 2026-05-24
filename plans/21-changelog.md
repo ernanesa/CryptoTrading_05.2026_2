@@ -2,6 +2,7 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-24 | Criação da Fase M9 (Validation & Reality Check) corrigindo status reais de maturidade das Fases M0-M8 e gerando backlog de hardenização |
 | 2026-05-21 | Status semântico dos benchmarks de hardening exposto pela API e exibido no dashboard com alertas operacionais |
 | 2026-05-21 | Adicionado comando `refresh` ao `CryptoTrading.RagTool` para recriar coleções de docs/código no Qdrant e evitar chunks obsoletos após mudanças grandes |
 | 2026-05-21 | Alinhamento do relatório de hardening e fallback do dashboard ao benchmark opt-in `FeatureStore.GetMarketDataPointsAsync`, incluindo risco operacional e teste unitário de regressão |
