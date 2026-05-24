@@ -67,5 +67,42 @@ public class PerformanceAnalyzer
 
         report.MaxDrawdown = maxDrawdown;
         report.MaxDrawdownPercent = maxDrawdownPercent;
+
+        // Calculate trade-by-trade returns for Sharpe and Sortino
+        var returns = trades.Select(t => t.RealizedPnL / report.InitialCapital).ToList();
+        if (returns.Count > 1)
+        {
+            var meanReturn = returns.Average();
+            var sumOfSquares = returns.Sum(r => (r - meanReturn) * (r - meanReturn));
+            var stdDev = (decimal)Math.Sqrt((double)(sumOfSquares / (returns.Count - 1)));
+            
+            if (stdDev > 0)
+            {
+                // Annualized Sharpe Ratio assuming ~1000 trades/year? 
+                // We'll just calculate a raw per-trade Sharpe without annualization if we don't know the timeframe, 
+                // or we can annualize if we know the days. Here we do raw trade Sharpe * sqrt(trades).
+                report.SharpeRatio = (meanReturn / stdDev) * (decimal)Math.Sqrt((double)returns.Count);
+            }
+
+            var negativeReturns = returns.Where(r => r < 0).ToList();
+            if (negativeReturns.Count > 1)
+            {
+                var sumOfNegativeSquares = negativeReturns.Sum(r => (r - 0) * (r - 0));
+                var downsideDev = (decimal)Math.Sqrt((double)(sumOfNegativeSquares / negativeReturns.Count));
+                if (downsideDev > 0)
+                {
+                    // Sortino ratio
+                    // Not formally tracked in report yet, but can be added if BacktestReport has the property
+                    // report.SortinoRatio = ...
+                }
+            }
+        }
+
+        // Calmar Ratio
+        // Typically Annualized Return / Max Drawdown
+        if (report.MaxDrawdownPercent > 0)
+        {
+            // report.CalmarRatio = report.TotalPnLPercent / report.MaxDrawdownPercent;
+        }
     }
 }

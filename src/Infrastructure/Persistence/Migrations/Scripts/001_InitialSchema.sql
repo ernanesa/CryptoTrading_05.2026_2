@@ -106,3 +106,36 @@ CREATE TABLE IF NOT EXISTS testnet_audit_logs (
     details VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS backtest_runs (
+    id BIGSERIAL PRIMARY KEY,
+    strategy_name VARCHAR(50) NOT NULL,
+    symbol VARCHAR(20) NOT NULL,
+    interval VARCHAR(10) NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    initial_capital NUMERIC(28, 8) NOT NULL,
+    final_capital NUMERIC(28, 8) NOT NULL,
+    total_trades INT NOT NULL,
+    winning_trades INT NOT NULL,
+    losing_trades INT NOT NULL,
+    win_rate NUMERIC(10, 4) NOT NULL,
+    max_drawdown_percent NUMERIC(10, 4) NOT NULL,
+    sharpe_ratio NUMERIC(10, 4) NOT NULL,
+    profit_factor NUMERIC(10, 4) NOT NULL,
+    executed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS backtest_trades (
+    id BIGSERIAL PRIMARY KEY,
+    backtest_run_id BIGINT NOT NULL REFERENCES backtest_runs(id) ON DELETE CASCADE,
+    symbol VARCHAR(20) NOT NULL,
+    type VARCHAR(10) NOT NULL,
+    entry_price NUMERIC(28, 8) NOT NULL,
+    exit_price NUMERIC(28, 8),
+    quantity NUMERIC(28, 8) NOT NULL,
+    entry_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    exit_time TIMESTAMP WITH TIME ZONE,
+    fees_paid NUMERIC(28, 8) NOT NULL,
+    pnl NUMERIC(28, 8) NOT NULL
+);

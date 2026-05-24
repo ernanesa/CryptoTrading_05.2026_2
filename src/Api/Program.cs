@@ -23,6 +23,7 @@ builder.Services.AddCors(options =>
 // Configuração do ambiente e injeção de dependências do Core
 builder.Services.AddSingleton<IMetricsService, MetricsService>();
 builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
+builder.Services.AddSingleton<IBacktestRepository, BacktestRepository>();
 builder.Services.AddSingleton<StrategyRegistry>();
 builder.Services.AddTransient<BacktestEngine>();
 builder.Services.AddSingleton<IRiskEngine, RiskEngine>();
@@ -176,7 +177,8 @@ app.MapGet("/api/backtest/run", async (
     decimal? fee,
     IFeatureStore store,
     StrategyRegistry registry,
-    BacktestEngine engine) =>
+    BacktestEngine engine,
+    IBacktestRepository backtestRepo) =>
 {
     var strategy = registry.Get(strategyName);
     if (strategy == null)
@@ -197,10 +199,11 @@ app.MapGet("/api/backtest/run", async (
     }
 
     var capital = initialCapital ?? 10000m;
-    var slipModel = new PercentageSlippageModel(slippage ?? 0.0005m); // Padrão: 0.05%
-    var feeModel = new BinanceSpotFeeModel(fee ?? 0.001m);            // Padrão: 0.1%
+    var slipModel = new VolumeBasedSlippageModel(slippage ?? 0.0005m, 0.0001m);
+    var feeModel = new MakerTakerFeeModel(fee ?? 0.001m, fee ?? 0.001m);
 
     var report = engine.Run(strategy, pointsList, capital, feeModel, slipModel);
+    await backtestRepo.SaveReportAsync(report);
     return Results.Ok(report);
 })
 .WithName("RunBacktest");
@@ -216,7 +219,8 @@ app.MapGet("/api/backtest/run-all", async (
     decimal? fee,
     IFeatureStore store,
     StrategyRegistry registry,
-    BacktestEngine engine) =>
+    BacktestEngine engine,
+    IBacktestRepository backtestRepo) =>
 {
     var startUtc = startTime.ToUniversalTime();
     var endUtc = endTime.ToUniversalTime();
@@ -230,14 +234,15 @@ app.MapGet("/api/backtest/run-all", async (
     }
 
     var capital = initialCapital ?? 10000m;
-    var slipModel = new PercentageSlippageModel(slippage ?? 0.0005m);
-    var feeModel = new BinanceSpotFeeModel(fee ?? 0.001m);
+    var slipModel = new VolumeBasedSlippageModel(slippage ?? 0.0005m, 0.0001m);
+    var feeModel = new MakerTakerFeeModel(fee ?? 0.001m, fee ?? 0.001m);
 
     var comparativeReports = new List<object>();
 
     foreach (var strategy in registry.GetAll())
     {
         var report = engine.Run(strategy, pointsList, capital, feeModel, slipModel);
+        await backtestRepo.SaveReportAsync(report);
         comparativeReports.Add(new
         {
             StrategyName = report.StrategyName,
@@ -260,7 +265,55 @@ app.MapGet("/api/backtest/run-all", async (
 
     return Results.Ok(comparativeReports);
 })
-.WithName("RunAllBacktests");
+.WithName("RunBacktestAllStrategies");
+
+// 4. Executar backtest para múltiplos pares (Multi-pair)
+app.MapGet("/api/backtest/run-multipair", async (
+    string strategyName,
+    string symbols, // comma separated
+    string interval,
+    DateTime startTime,
+    DateTime endTime,
+    decimal? initialCapital,
+    decimal? slippage,
+    decimal? fee,
+    IFeatureStore store,
+    StrategyRegistry registry,
+    BacktestEngine engine,
+    IBacktestRepository backtestRepo) =>
+{
+    var strategy = registry.Get(strategyName);
+    if (strategy == null)
+    {
+        return Results.NotFound(new { Message = $"Estratégia '{strategyName}' não encontrada." });
+    }
+
+    var startUtc = startTime.ToUniversalTime();
+    var endUtc = endTime.ToUniversalTime();
+
+    var capital = initialCapital ?? 10000m;
+    var slipModel = new VolumeBasedSlippageModel(slippage ?? 0.0005m, 0.0001m);
+    var feeModel = new MakerTakerFeeModel(fee ?? 0.001m, fee ?? 0.001m);
+
+    var symbolList = symbols.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var reports = new List<object>();
+
+    foreach (var sym in symbolList)
+    {
+        var dataPoints = await store.GetMarketDataPointsAsync(sym, interval, startUtc, endUtc);
+        var pointsList = dataPoints.ToList();
+
+        if (pointsList.Any())
+        {
+            var report = engine.Run(strategy, pointsList, capital, feeModel, slipModel);
+            await backtestRepo.SaveReportAsync(report);
+            reports.Add(report);
+        }
+    }
+
+    return Results.Ok(reports);
+})
+.WithName("RunBacktestMultiPair");
 
 // 4. Paper Trading — Estado da carteira virtual
 app.MapGet("/api/paper/wallet", async (IFeatureStore store) =>
