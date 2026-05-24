@@ -14,6 +14,7 @@ public class AdaptiveOrchestrationRequest
     public decimal PortfolioValue { get; set; } = 10000m;
     public RiskStatus RiskStatus { get; set; } = RiskStatus.Normal;
     public bool DataQualityPassed { get; set; } = true;
+    public Dictionary<string, BacktestReport> HistoricalReports { get; set; } = new();
 }
 
 public class AdaptiveOrchestrationDecision

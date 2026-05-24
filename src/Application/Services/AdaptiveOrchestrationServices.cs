@@ -81,7 +81,7 @@ public class AssetRankingService
 
 public class StrategyPerformanceTracker
 {
-    public decimal EstimateExpectancyScore(string strategyName, IntelligenceSnapshot intelligence)
+    public decimal EstimateExpectancyScore(string strategyName, IntelligenceSnapshot intelligence, AdaptiveOrchestrationRequest request)
     {
         var baseScore = strategyName switch
         {
@@ -92,6 +92,13 @@ public class StrategyPerformanceTracker
             "Bollinger Mean Reversion" => 100m - intelligence.FeatureVector.TrendScore,
             _ => 50m
         };
+
+        if (request.HistoricalReports.TryGetValue(strategyName, out var report))
+        {
+            // Histórico compõe 50% do score se existir
+            var historicalScore = Math.Clamp((report.WinRate * 100m) + (report.SharpeRatio * 10m), 0m, 100m);
+            baseScore = (baseScore * 0.5m) + (historicalScore * 0.5m);
+        }
 
         return RoundScore(baseScore);
     }
@@ -108,10 +115,11 @@ public class StrategyScoringService
         _performanceTracker = performanceTracker;
     }
 
-    public StrategyScoreSnapshot Score(string strategyName, IntelligenceSnapshot intelligence, ExecutionCostEstimate cost)
+    public StrategyScoreSnapshot Score(string strategyName, AdaptiveOrchestrationRequest request, ExecutionCostEstimate cost)
     {
+        var intelligence = request.Intelligence;
         var regimeFitScore = CalculateRegimeFit(strategyName, intelligence.MarketRegime);
-        var expectancyScore = _performanceTracker.EstimateExpectancyScore(strategyName, intelligence);
+        var expectancyScore = _performanceTracker.EstimateExpectancyScore(strategyName, intelligence, request);
         var profitFactorScore = Math.Clamp(expectancyScore + 8m, 0m, 100m);
         var drawdownScore = 100m - intelligence.SentimentRisk.RiskScore;
         var signalQualityScore = intelligence.MetaLabel.QualityScore;
@@ -170,14 +178,39 @@ public class StrategyHealthMonitor
 
 public class MultiArmedBanditAllocator
 {
-    public BanditAllocation Select(IReadOnlyList<StrategyScoreSnapshot> scores)
+    public BanditAllocation Select(IReadOnlyList<StrategyScoreSnapshot> scores, AdaptiveOrchestrationRequest request)
     {
         var best = scores.OrderByDescending(s => s.Score).First();
+        
+        // Se temos histórico, podemos ajustar o exploration weight
+        decimal explorationWeight = 0.20m; // Base epsilon
+        
+        if (request.HistoricalReports.TryGetValue(best.StrategyName, out var report))
+        {
+            // Se o win rate for alto e sharpe for bom, menos exploração (mais exploitation)
+            if (report.WinRate > 0.55m && report.SharpeRatio > 1.5m)
+            {
+                explorationWeight = 0.05m;
+            }
+            // Se a estratégia está performando mal historicamente, forçamos mais exploração
+            else if (report.WinRate < 0.40m || report.MaxDrawdownPercent > 15m)
+            {
+                explorationWeight = 0.40m;
+            }
+        }
+        else
+        {
+            // Estratégia sem histórico ganha peso maior de exploração inicial
+            explorationWeight = 0.30m;
+        }
+
+        var exploitationWeight = 1m - explorationWeight;
+
         return new BanditAllocation
         {
             SelectedArm = best.StrategyName,
-            ExploitationWeight = Math.Round(Math.Clamp(best.Score / 100m, 0.60m, 0.95m), 2),
-            ExplorationWeight = Math.Round(1m - Math.Clamp(best.Score / 100m, 0.60m, 0.95m), 2)
+            ExploitationWeight = Math.Round(exploitationWeight, 2),
+            ExplorationWeight = Math.Round(explorationWeight, 2)
         };
     }
 }
@@ -310,7 +343,7 @@ public class AdaptiveStrategyOrchestrator
         var cost = _costModel.Estimate(request.Intelligence);
         var asset = _assetRanking.Rank(request.Symbol, request.Intelligence, cost);
         var strategyScores = request.StrategyNames
-            .Select(name => _strategyScoring.Score(name, request.Intelligence, cost))
+            .Select(name => _strategyScoring.Score(name, request, cost))
             .OrderByDescending(score => score.Score)
             .ToList();
 
@@ -320,7 +353,7 @@ public class AdaptiveStrategyOrchestrator
         var shouldSwitch = ShouldSwitch(active, candidate, request, candidateHealth);
         var selected = shouldSwitch ? candidate : active;
         var selectedHealth = _healthMonitor.Evaluate(selected, request.Intelligence);
-        var bandit = _bandit.Select(strategyScores);
+        var bandit = _bandit.Select(strategyScores, request);
         var allocation = _portfolioAllocator.Allocate(asset.Score, selected.Score, marketHealthScore);
         var positionSize = request.DataQualityPassed
             ? _positionSizing.Calculate(request.PortfolioValue, allocation, request.RiskStatus, selectedHealth)

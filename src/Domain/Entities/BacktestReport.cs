@@ -20,5 +20,6 @@ public class BacktestReport
     public decimal ProfitFactor { get; set; }
     public decimal Expectancy { get; set; }
     public decimal TotalFees { get; set; }
+    public decimal SharpeRatio { get; set; }
     public List<Position> Trades { get; set; } = new();
 }

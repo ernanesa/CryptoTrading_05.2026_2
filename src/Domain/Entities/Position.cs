@@ -14,6 +14,8 @@ public class Position
     public DateTime? ExitTime { get; set; }
     public decimal RealizedPnL { get; set; }
     public decimal FeesPaid { get; set; }
+    public decimal? StopLossPrice { get; set; }
+    public decimal? TakeProfitPrice { get; set; }
     public bool IsClosed { get; set; }
 
     public void Close(decimal exitPrice, DateTime exitTime, decimal exitFee)

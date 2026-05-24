@@ -243,6 +243,66 @@ public class FeatureStore : IFeatureStore
         return await conn.QueryAsync<PaperTrade>(sql, new { Symbol = symbol, Limit = limit });
     }
 
+    public async Task SavePaperPositionAsync(Position position)
+    {
+        using var conn = CreateConnection();
+        // Se a posição for nova, Id provavelmente será 0. Não podemos fazer ON CONFLICT em (id) se o id não vier setado.
+        // Se usarmos id BIGSERIAL e mandarmos DEFAULT no insert, o ON CONFLICT (id) só funciona para atualizações se o id estiver correto.
+        // Wait, a melhor abordagem é se Position.Id == 0 faz INSERT RETURNING id. Se Id > 0 faz UPDATE.
+        
+        
+        if (position.Id == 0)
+        {
+            const string insertSql = @"
+                INSERT INTO paper_positions (symbol, type, entry_price, quantity, entry_time, exit_price, exit_time, realized_pnl, fees_paid, stop_loss_price, take_profit_price, is_closed) 
+                VALUES (@Symbol, @TypeStr, @EntryPrice, @Quantity, @EntryTime, @ExitPrice, @ExitTime, @RealizedPnL, @FeesPaid, @StopLossPrice, @TakeProfitPrice, @IsClosed)
+                RETURNING id;
+            ";
+            var typeStr = position.Type.ToString();
+            position.Id = await conn.ExecuteScalarAsync<long>(insertSql, new { position.Symbol, TypeStr = typeStr, position.EntryPrice, position.Quantity, position.EntryTime, position.ExitPrice, position.ExitTime, position.RealizedPnL, position.FeesPaid, position.StopLossPrice, position.TakeProfitPrice, position.IsClosed });
+        }
+        else
+        {
+            const string updateSql = @"
+                UPDATE paper_positions
+                SET exit_price = @ExitPrice, exit_time = @ExitTime, realized_pnl = @RealizedPnL, fees_paid = @FeesPaid, stop_loss_price = @StopLossPrice, take_profit_price = @TakeProfitPrice, is_closed = @IsClosed
+                WHERE id = @Id;
+            ";
+            await conn.ExecuteAsync(updateSql, position);
+        }
+    }
+
+    public async Task<Position?> GetActivePaperPositionAsync(string symbol)
+    {
+        const string sql = @"
+        SELECT id, symbol, type AS TypeStr, entry_price AS EntryPrice, quantity AS Quantity, entry_time AS EntryTime, exit_price AS ExitPrice, exit_time AS ExitTime, realized_pnl AS RealizedPnL, fees_paid AS FeesPaid, stop_loss_price AS StopLossPrice, take_profit_price AS TakeProfitPrice, is_closed AS IsClosed 
+        FROM paper_positions 
+        WHERE symbol = @Symbol AND is_closed = FALSE
+        ORDER BY entry_time DESC 
+        LIMIT 1;";
+
+        using var conn = CreateConnection();
+        var result = await conn.QueryFirstOrDefaultAsync<dynamic>(sql, new { Symbol = symbol });
+        if (result == null) return null;
+        
+        return new Position
+        {
+            Id = result.id,
+            Symbol = result.symbol,
+            Type = Enum.Parse<CryptoTrading.Domain.Enums.PositionType>((string)result.typestr),
+            EntryPrice = result.entryprice,
+            Quantity = result.quantity,
+            EntryTime = result.entrytime,
+            ExitPrice = result.exitprice,
+            ExitTime = result.exittime,
+            RealizedPnL = result.realizedpnl,
+            FeesPaid = result.feespaid,
+            StopLossPrice = result.stoplossprice,
+            TakeProfitPrice = result.takeprofitprice,
+            IsClosed = result.isclosed
+        };
+    }
+
     public async Task SaveDecisionAuditAsync(DecisionAudit audit)
     {
         const string sql = @"

@@ -19,6 +19,7 @@ public class PaperTradingTests
             new WalletBalance { Symbol = "USDT", Free = 10000m, Locked = 0m, UpdatedAt = DateTime.UtcNow }
         };
         public List<PaperTrade> Trades { get; set; } = new();
+        public List<Position> Positions { get; set; } = new();
         public List<DecisionAudit> Audits { get; set; } = new();
 
         public Task InitializeSchemaAsync() => Task.CompletedTask;
@@ -42,7 +43,32 @@ public class PaperTradingTests
         public Task<IEnumerable<WalletBalance>> GetWalletBalancesAsync() => Task.FromResult<IEnumerable<WalletBalance>>(Balances);
 
         public Task SavePaperTradeAsync(PaperTrade trade) { Trades.Add(trade); return Task.CompletedTask; }
-        public Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100) => Task.FromResult(Trades.Where(t => t.Symbol == symbol).Take(limit));
+        public Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100) => Task.FromResult<IEnumerable<PaperTrade>>(Trades.Where(t => t.Symbol == symbol).OrderByDescending(t => t.ExecutedAt).Take(limit));
+
+        public Task SavePaperPositionAsync(Position position)
+        {
+            if (position.Id == 0)
+            {
+                position.Id = Positions.Count + 1;
+                Positions.Add(position);
+            }
+            else
+            {
+                var existing = Positions.FirstOrDefault(p => p.Id == position.Id);
+                if (existing != null)
+                {
+                    Positions.Remove(existing);
+                    Positions.Add(position);
+                }
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task<Position?> GetActivePaperPositionAsync(string symbol)
+        {
+            var active = Positions.FirstOrDefault(p => p.Symbol == symbol && !p.IsClosed);
+            return Task.FromResult(active);
+        }
 
         public Task SaveDecisionAuditAsync(DecisionAudit audit) { Audits.Add(audit); return Task.CompletedTask; }
         public Task<IEnumerable<DecisionAudit>> GetDecisionAuditsAsync(int limit = 100) => Task.FromResult(Audits.Take(limit));

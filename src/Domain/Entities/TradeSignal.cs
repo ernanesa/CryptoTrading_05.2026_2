@@ -8,4 +8,6 @@ public class TradeSignal
     public TradeSignalType Type { get; set; } = TradeSignalType.Hold;
     public DateTime Timestamp { get; set; }
     public string Description { get; set; } = string.Empty;
+    public decimal? StopLossPrice { get; set; }
+    public decimal? TakeProfitPrice { get; set; }
 }

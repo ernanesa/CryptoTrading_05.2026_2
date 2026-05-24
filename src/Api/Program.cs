@@ -52,6 +52,8 @@ builder.Services.AddSingleton<DynamicExitEngine>();
 builder.Services.AddSingleton<TradeAttributionService>();
 builder.Services.AddSingleton<WalkForwardEvaluator>();
 builder.Services.AddSingleton<AdaptiveStrategyOrchestrator>();
+builder.Services.AddSingleton<DatasetBuilderService>();
+builder.Services.AddSingleton<ModelDriftMonitor>();
 builder.Services.AddSingleton<SecretRedactor>();
 builder.Services.AddSingleton<ChaosScenarioRunner>();
 builder.Services.AddSingleton<BenchmarkCatalog>();

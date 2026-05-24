@@ -43,9 +43,42 @@ public class PaperTradeExecutor
         var signal = strategy.GenerateSignal(currentPoint, historyList);
         _metrics?.IncrementSignals();
 
-        // 3. Carregar estados do banco de dados (carteira e histórico de trades)
+        // 3. Carregar estados do banco de dados (carteira e posição ativa)
         var balances = (await _store.GetWalletBalancesAsync()).ToList();
-        var recentTrades = (await _store.GetPaperTradesAsync(symbol, 50)).ToList();
+        var activePosition = await _store.GetActivePaperPositionAsync(symbol);
+        var recentTrades = (await _store.GetPaperTradesAsync(symbol, 10)).ToList();
+
+        // 3.1 Checar gatilhos de Stop-Loss ou Take-Profit antes da estratégia
+        if (activePosition != null && activePosition.Type == PositionType.Long)
+        {
+            bool triggerExit = false;
+            string triggerReason = "";
+
+            if (activePosition.StopLossPrice.HasValue && currentPoint.Candle.Low <= activePosition.StopLossPrice.Value)
+            {
+                triggerExit = true;
+                triggerReason = $"Stop Loss atingido (Low: {currentPoint.Candle.Low:F2} <= SL: {activePosition.StopLossPrice.Value:F2})";
+                price = activePosition.StopLossPrice.Value; // Execute at SL price
+            }
+            else if (activePosition.TakeProfitPrice.HasValue && currentPoint.Candle.High >= activePosition.TakeProfitPrice.Value)
+            {
+                triggerExit = true;
+                triggerReason = $"Take Profit atingido (High: {currentPoint.Candle.High:F2} >= TP: {activePosition.TakeProfitPrice.Value:F2})";
+                price = activePosition.TakeProfitPrice.Value; // Execute at TP price
+            }
+
+            if (triggerExit)
+            {
+                // Sobrescrever sinal da estratégia para forçar saída
+                signal = new TradeSignal
+                {
+                    Symbol = symbol,
+                    Type = TradeSignalType.Exit,
+                    Timestamp = currentPoint.Candle.OpenTime,
+                    Description = triggerReason
+                };
+            }
+        }
 
         // Garantir que a carteira tenha USDT inicializado
         var usdtBalance = balances.FirstOrDefault(b => b.Symbol.Equals("USDT", StringComparison.OrdinalIgnoreCase));
@@ -134,8 +167,35 @@ public class PaperTradeExecutor
                 PnL = 0m,
                 ExecutedAt = DateTime.UtcNow
             };
-
             await _store.SavePaperTradeAsync(trade);
+
+            if (activePosition == null)
+            {
+                activePosition = new Position
+                {
+                    Symbol = symbol,
+                    Type = PositionType.Long,
+                    EntryPrice = slippedPrice,
+                    Quantity = quantity,
+                    EntryTime = DateTime.UtcNow,
+                    FeesPaid = fee,
+                    StopLossPrice = signal.StopLossPrice,
+                    TakeProfitPrice = signal.TakeProfitPrice,
+                    IsClosed = false
+                };
+            }
+            else
+            {
+                // Average down/up
+                var totalCost = (activePosition.EntryPrice * activePosition.Quantity) + (slippedPrice * quantity);
+                activePosition.Quantity += quantity;
+                activePosition.EntryPrice = totalCost / activePosition.Quantity;
+                activePosition.FeesPaid += fee;
+                activePosition.StopLossPrice = signal.StopLossPrice ?? activePosition.StopLossPrice;
+                activePosition.TakeProfitPrice = signal.TakeProfitPrice ?? activePosition.TakeProfitPrice;
+            }
+            await _store.SavePaperPositionAsync(activePosition);
+
             audit.Reason = $"COMPRA executada: {quantity:F4} {baseAssetSymbol} a ${slippedPrice:F2} (Taxa: ${fee:F2})";
 
             var execCost = fee + (slippedPrice - price) * quantity;
@@ -159,12 +219,13 @@ public class PaperTradeExecutor
             var saleValue = quantity * slippedPrice;
             var fee = saleValue * 0.001m;
 
-            // Calcular PnL baseado no último trade de compra
-            var lastBuyTrade = recentTrades.FirstOrDefault(t => t.Type.Equals("BUY", StringComparison.OrdinalIgnoreCase));
+            // Calcular PnL usando o estado da posição ativa
             decimal pnl = 0m;
-            if (lastBuyTrade != null)
+            if (activePosition != null)
             {
-                pnl = (slippedPrice - lastBuyTrade.Price) * quantity - fee - lastBuyTrade.Fee;
+                activePosition.Close(slippedPrice, DateTime.UtcNow, fee);
+                pnl = activePosition.RealizedPnL;
+                await _store.SavePaperPositionAsync(activePosition);
             }
             else
             {

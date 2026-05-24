@@ -15,6 +15,8 @@ public class BinanceTestnetTests
         public List<ExchangeFilterInfo> Filters { get; set; } = new();
         public List<TestnetOrder> Orders { get; set; } = new();
         public List<TestnetAuditLog> Logs { get; set; } = new();
+        public List<PaperTrade> Trades { get; set; } = new();
+        public List<DecisionAudit> Audits { get; set; } = new();
 
         public Task InitializeSchemaAsync() => Task.CompletedTask;
         public Task SaveCandlesAsync(IEnumerable<Candle> candles) => Task.CompletedTask;
@@ -23,9 +25,13 @@ public class BinanceTestnetTests
         public Task<IEnumerable<MarketDataPoint>> GetMarketDataPointsAsync(string symbol, string interval, DateTime startTime, DateTime endTime) => Task.FromResult(Enumerable.Empty<MarketDataPoint>());
         public Task SaveWalletBalanceAsync(WalletBalance balance) => Task.CompletedTask;
         public Task<IEnumerable<WalletBalance>> GetWalletBalancesAsync() => Task.FromResult(Enumerable.Empty<WalletBalance>());
-        public Task SavePaperTradeAsync(PaperTrade trade) => Task.CompletedTask;
-        public Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100) => Task.FromResult(Enumerable.Empty<PaperTrade>());
-        public Task SaveDecisionAuditAsync(DecisionAudit audit) => Task.CompletedTask;
+        public Task SavePaperTradeAsync(PaperTrade trade) { Trades.Add(trade); return Task.CompletedTask; }
+        public Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100) => Task.FromResult(Trades.Where(t => t.Symbol == symbol).Take(limit));
+
+        public Task SavePaperPositionAsync(Position position) => Task.CompletedTask;
+        public Task<Position?> GetActivePaperPositionAsync(string symbol) => Task.FromResult<Position?>(null);
+
+        public Task SaveDecisionAuditAsync(DecisionAudit audit) { Audits.Add(audit); return Task.CompletedTask; }
         public Task<IEnumerable<DecisionAudit>> GetDecisionAuditsAsync(int limit = 100) => Task.FromResult(Enumerable.Empty<DecisionAudit>());
         public Task ClearPaperTradingDataAsync() => Task.CompletedTask;
 

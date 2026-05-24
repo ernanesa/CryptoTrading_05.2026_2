@@ -77,4 +77,17 @@ public class BacktestRepository : IBacktestRepository
         using var conn = CreateConnection();
         return await conn.QueryAsync<BacktestReport>(sql, new { Limit = limit });
     }
+
+    public async Task<BacktestReport?> GetLatestReportAsync(string strategyName, string symbol)
+    {
+        const string sql = @"
+        SELECT id, strategy_name AS StrategyName, symbol AS Symbol, interval AS Interval, start_time AS StartTime, end_time AS EndTime, initial_capital AS InitialCapital, final_capital AS FinalCapital, total_trades AS TotalTrades, winning_trades AS WinningTrades, losing_trades AS LosingTrades, win_rate AS WinRate, max_drawdown_percent AS MaxDrawdownPercent, sharpe_ratio AS SharpeRatio, profit_factor AS ProfitFactor 
+        FROM backtest_runs 
+        WHERE strategy_name = @StrategyName AND symbol = @Symbol
+        ORDER BY executed_at DESC 
+        LIMIT 1;";
+
+        using var conn = CreateConnection();
+        return await conn.QueryFirstOrDefaultAsync<BacktestReport>(sql, new { StrategyName = strategyName, Symbol = symbol });
+    }
 }

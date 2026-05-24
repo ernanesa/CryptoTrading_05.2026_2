@@ -7,4 +7,6 @@ public class RegisteredModelInfo
     public string Purpose { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty;
     public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
+    public bool IsShadowMode { get; set; } = true;
+    public bool IsActive { get; set; } = true;
 }

@@ -54,6 +54,16 @@ public interface IFeatureStore
     Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100);
 
     /// <summary>
+    /// Salva ou atualiza uma posição ativa no Paper Trading.
+    /// </summary>
+    Task SavePaperPositionAsync(Position position);
+
+    /// <summary>
+    /// Resgata a posição ativa para o Paper Trading de um par.
+    /// </summary>
+    Task<Position?> GetActivePaperPositionAsync(string symbol);
+
+    /// <summary>
     /// Grava uma auditoria de decisão de trading (sinal aceito ou rejeitado e por qual regra).
     /// </summary>
     Task SaveDecisionAuditAsync(DecisionAudit audit);
