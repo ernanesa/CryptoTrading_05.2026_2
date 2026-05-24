@@ -1,8 +1,11 @@
 using System.Data;
+using System.Reflection;
 using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
 using Dapper;
+using DbUp;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace CryptoTrading.Infrastructure.Persistence;
@@ -35,133 +38,31 @@ public class FeatureStore : IFeatureStore
 
     public async Task InitializeSchemaAsync()
     {
-        const string ddl = @"
-        CREATE TABLE IF NOT EXISTS candles (
-            id BIGSERIAL PRIMARY KEY,
-            symbol VARCHAR(20) NOT NULL,
-            interval VARCHAR(10) NOT NULL,
-            open_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            open NUMERIC(28, 8) NOT NULL,
-            high NUMERIC(28, 8) NOT NULL,
-            low NUMERIC(28, 8) NOT NULL,
-            close NUMERIC(28, 8) NOT NULL,
-            volume NUMERIC(28, 8) NOT NULL,
-            taker_buy_volume NUMERIC(28, 8) NOT NULL DEFAULT 0,
-            close_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            CONSTRAINT uq_candles UNIQUE (symbol, interval, open_time)
-        );
+        var upgrader = DeployChanges.To
+            .PostgresqlDatabase(_connectionString)
+            .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly(), script => script.StartsWith("CryptoTrading.Infrastructure.Persistence.Migrations.Scripts."))
+            .LogToConsole()
+            .Build();
 
-        CREATE TABLE IF NOT EXISTS candle_features (
-            candle_id BIGINT PRIMARY KEY REFERENCES candles(id) ON DELETE CASCADE,
-            symbol VARCHAR(20) NOT NULL,
-            open_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            ema_9 NUMERIC(28, 8) NOT NULL,
-            ema_21 NUMERIC(28, 8) NOT NULL,
-            ema_50 NUMERIC(28, 8) NOT NULL,
-            ema_200 NUMERIC(28, 8) NOT NULL,
-            rsi_14 NUMERIC(28, 8) NOT NULL,
-            macd_value NUMERIC(28, 8) NOT NULL,
-            macd_signal NUMERIC(28, 8) NOT NULL,
-            macd_histogram NUMERIC(28, 8) NOT NULL,
-            atr_14 NUMERIC(28, 8) NOT NULL,
-            bb_upper NUMERIC(28, 8) NOT NULL,
-            bb_middle NUMERIC(28, 8) NOT NULL,
-            bb_lower NUMERIC(28, 8) NOT NULL,
-            adx NUMERIC(28, 8) NOT NULL,
-            returns NUMERIC(28, 8) NOT NULL DEFAULT 0,
-            volume_z_score NUMERIC(28, 8) NOT NULL DEFAULT 0,
-            spread NUMERIC(28, 8) NOT NULL DEFAULT 0,
-            imbalance NUMERIC(28, 8) NOT NULL DEFAULT 0,
-            calculated_at TIMESTAMP WITH TIME ZONE NOT NULL
-        );
+        var result = upgrader.PerformUpgrade();
 
-        CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles (symbol, interval, open_time DESC);
-        CREATE INDEX IF NOT EXISTS idx_features_lookup ON candle_features (symbol, open_time DESC);
+        if (!result.Successful)
+        {
+            throw new Exception("Falha na migração do banco de dados (DbUp).", result.Error);
+        }
 
-        ALTER TABLE candles ADD COLUMN IF NOT EXISTS taker_buy_volume NUMERIC(28, 8) NOT NULL DEFAULT 0;
-        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS returns NUMERIC(28, 8) NOT NULL DEFAULT 0;
-        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS volume_z_score NUMERIC(28, 8) NOT NULL DEFAULT 0;
-        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS spread NUMERIC(28, 8) NOT NULL DEFAULT 0;
-        ALTER TABLE candle_features ADD COLUMN IF NOT EXISTS imbalance NUMERIC(28, 8) NOT NULL DEFAULT 0;
-
-        CREATE TABLE IF NOT EXISTS paper_wallet (
-            symbol VARCHAR(20) PRIMARY KEY,
-            free NUMERIC(28, 8) NOT NULL,
-            locked NUMERIC(28, 8) NOT NULL,
-            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS paper_trades (
-            id BIGSERIAL PRIMARY KEY,
-            symbol VARCHAR(20) NOT NULL,
-            type VARCHAR(10) NOT NULL,
-            price NUMERIC(28, 8) NOT NULL,
-            quantity NUMERIC(28, 8) NOT NULL,
-            fee NUMERIC(28, 8) NOT NULL,
-            pnl NUMERIC(28, 8) NOT NULL,
-            executed_at TIMESTAMP WITH TIME ZONE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS decision_audits (
-            id BIGSERIAL PRIMARY KEY,
-            symbol VARCHAR(20) NOT NULL,
-            strategy_name VARCHAR(50) NOT NULL,
-            signal_type VARCHAR(10) NOT NULL,
-            price NUMERIC(28, 8) NOT NULL,
-            timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-            decision VARCHAR(20) NOT NULL,
-            reason VARCHAR(255) NOT NULL
-        );
-
-        INSERT INTO paper_wallet (symbol, free, locked, updated_at)
-        VALUES ('USDT', 10000.0, 0.0, NOW())
-        ON CONFLICT (symbol) DO NOTHING;
-
-        CREATE TABLE IF NOT EXISTS exchange_filter_info (
-            symbol VARCHAR(20) PRIMARY KEY,
-            tick_size NUMERIC(28, 8) NOT NULL,
-            step_size NUMERIC(28, 8) NOT NULL,
-            min_qty NUMERIC(28, 8) NOT NULL,
-            max_qty NUMERIC(28, 8) NOT NULL,
-            min_notional NUMERIC(28, 8) NOT NULL,
-            price_precision INT NOT NULL,
-            quantity_precision INT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS testnet_orders (
-            id BIGSERIAL PRIMARY KEY,
-            symbol VARCHAR(20) NOT NULL,
-            client_order_id VARCHAR(50) UNIQUE NOT NULL,
-            binance_order_id VARCHAR(50),
-            side VARCHAR(10) NOT NULL,
-            type VARCHAR(10) NOT NULL,
-            price NUMERIC(28, 8) NOT NULL,
-            quantity NUMERIC(28, 8) NOT NULL,
-            status VARCHAR(20) NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS testnet_audit_logs (
-            id BIGSERIAL PRIMARY KEY,
-            symbol VARCHAR(20) NOT NULL,
-            action VARCHAR(50) NOT NULL,
-            status VARCHAR(20) NOT NULL,
-            details VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE NOT NULL
-        );
-        ";
-
-        using var conn = CreateConnection();
-        await conn.ExecuteAsync(ddl);
+        await Task.CompletedTask;
     }
 
     public async Task SaveCandlesAsync(IEnumerable<Candle> candles)
     {
+        var candleList = candles.ToList();
+        if (!candleList.Any()) return;
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
         const string insertSql = @"
         INSERT INTO candles (symbol, interval, open_time, open, high, low, close, volume, taker_buy_volume, close_time)
-        VALUES (@Symbol, @Interval, @OpenTime, @Open, @High, @Low, @Close, @Volume, @TakerBuyVolume, @CloseTime)
+        SELECT * FROM UNNEST(@Symbols, @Intervals, @OpenTimes, @Opens, @Highs, @Lows, @Closes, @Volumes, @TakerBuyVolumes, @CloseTimes)
         ON CONFLICT (symbol, interval, open_time) DO UPDATE 
         SET open = EXCLUDED.open,
             high = EXCLUDED.high,
@@ -178,12 +79,28 @@ public class FeatureStore : IFeatureStore
 
         try
         {
-            var candleList = candles.ToList();
-            foreach (var candle in candleList)
+            var parameters = new
             {
-                // Salva e atualiza o ID do objeto para vincular com as features posteriormente
-                candle.Id = await conn.QuerySingleAsync<long>(insertSql, candle, tx);
+                Symbols = candleList.Select(c => c.Symbol).ToArray(),
+                Intervals = candleList.Select(c => c.Interval).ToArray(),
+                OpenTimes = candleList.Select(c => c.OpenTime).ToArray(),
+                Opens = candleList.Select(c => c.Open).ToArray(),
+                Highs = candleList.Select(c => c.High).ToArray(),
+                Lows = candleList.Select(c => c.Low).ToArray(),
+                Closes = candleList.Select(c => c.Close).ToArray(),
+                Volumes = candleList.Select(c => c.Volume).ToArray(),
+                TakerBuyVolumes = candleList.Select(c => c.TakerBuyVolume).ToArray(),
+                CloseTimes = candleList.Select(c => c.CloseTime).ToArray()
+            };
+
+            var returnedIds = (await conn.QueryAsync<long>(insertSql, parameters, tx)).ToList();
+            
+            // Atribuir IDs gerados/atualizados aos objetos de volta, assumindo que a ordem é preservada no UNNEST
+            for (int i = 0; i < candleList.Count; i++)
+            {
+                candleList[i].Id = returnedIds[i];
             }
+
             tx.Commit();
             
             sw.Stop();
