@@ -145,6 +145,30 @@ public class BinanceTestnetTests
     }
 
     [Fact]
+    public async Task ExecuteOrderAsync_RealMode_InvalidCredentials_ThrowsAndLogsSecretMasked()
+    {
+        var store = new InMemoryFeatureStore();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            { "Binance:Testnet:Enabled", "true" },
+            { "Binance:Testnet:ApiKey", "placeholder_key" },
+            { "Binance:Testnet:ApiSecret", "secret_to_redact" }
+        }).Build();
+
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance);
+        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_REAL", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
+
+        var result = await executor.ExecuteOrderAsync(order);
+
+        Assert.Equal("REJECTED", result.Status);
+        
+        var failureLog = store.Logs.FirstOrDefault(l => l.Action == "BINANCE_TESTNET_FAILED");
+        Assert.NotNull(failureLog);
+        Assert.Contains("fictícias ou inválidas", failureLog.Details);
+        Assert.DoesNotContain("secret_to_redact", failureLog.Details);
+    }
+
+    [Fact]
     public async Task SynchronizeActiveOrders_SyncsPending_UpdatesToFilled()
     {
         var store = new InMemoryFeatureStore();
