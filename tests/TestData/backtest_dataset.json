@@ -1,0 +1,7 @@
+[
+  { "Candle": { "Symbol": "BTCUSDT", "Interval": "1h", "OpenTime": "2026-05-01T00:00:00Z", "Open": 50000, "High": 51000, "Low": 49000, "Close": 50500, "Volume": 100 } },
+  { "Candle": { "Symbol": "BTCUSDT", "Interval": "1h", "OpenTime": "2026-05-01T01:00:00Z", "Open": 50500, "High": 52000, "Low": 50000, "Close": 51500, "Volume": 120 } },
+  { "Candle": { "Symbol": "BTCUSDT", "Interval": "1h", "OpenTime": "2026-05-01T02:00:00Z", "Open": 51500, "High": 51500, "Low": 49000, "Close": 49500, "Volume": 150 } },
+  { "Candle": { "Symbol": "BTCUSDT", "Interval": "1h", "OpenTime": "2026-05-01T03:00:00Z", "Open": 49500, "High": 50000, "Low": 48000, "Close": 48500, "Volume": 200 } },
+  { "Candle": { "Symbol": "BTCUSDT", "Interval": "1h", "OpenTime": "2026-05-01T04:00:00Z", "Open": 48500, "High": 49500, "Low": 48000, "Close": 49000, "Volume": 110 } }
+]
