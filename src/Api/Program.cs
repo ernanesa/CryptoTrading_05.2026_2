@@ -76,6 +76,7 @@ builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();
 builder.Services.AddTransient<BinanceTestnetExecutor>();
 builder.Services.AddTransient<OrderStatusSynchronizer>();
+builder.Services.AddSingleton<TokenService>();
 
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<MetricsBroadcaster>();
@@ -93,6 +94,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseHttpsRedirection();
 
+app.UseMiddleware<AuthMiddleware>();
 app.MapPrometheusScrapingEndpoint();
 
 // Mapeamento do Hub de métricas do SignalR
@@ -100,6 +102,17 @@ app.MapHub<MetricsHub>("/hubs/metrics");
 
 // Endpoints REST de Observabilidade e Saúde
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
+
+app.MapPost("/api/auth/login", (LoginRequest request, TokenService tokenService) =>
+{
+    var token = tokenService.Authenticate(request.Username, request.Password);
+    if (token == null)
+    {
+        return Results.Json(new { Message = "Credenciais inválidas." }, statusCode: 400);
+    }
+    return Results.Ok(new { Token = token, Username = request.Username });
+})
+.WithName("AuthLogin");
 
 app.MapGet("/api/runtime/status", (RuntimeStatusService statusService) => Results.Ok(statusService.GetStatus()))
     .WithName("GetRuntimeStatus");
@@ -717,3 +730,4 @@ app.MapPost("/api/orchestration/decide", async (
 app.Run();
 
 public record TestnetOrderSubmission(TestnetOrder Order, RiskDecision? RiskDecision);
+public record LoginRequest(string Username, string Password);

@@ -208,6 +208,12 @@ interface AuditLog {
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(apiService.isAuthenticated());
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'market' | 'backtest' | 'paper' | 'risk' | 'testnet' | 'logs'>('overview');
   const { isConnected, setIsConnected, setMode } = useAppStore();
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>({
@@ -433,15 +439,26 @@ export default function App() {
 
   // Setup SignalR and REST fetching
   useEffect(() => {
+    // Escuta eventos de autenticação
+    const handleAuthSuccess = () => setIsAuthenticated(true);
+    const handleAuthFailed = () => setIsAuthenticated(false);
+
+    window.addEventListener('auth-success', handleAuthSuccess);
+    window.addEventListener('auth-failed', handleAuthFailed);
+
+    if (!isAuthenticated) {
+      return () => {
+        window.removeEventListener('auth-success', handleAuthSuccess);
+        window.removeEventListener('auth-failed', handleAuthFailed);
+      };
+    }
+
     // REST fetch fallback and fast interval polling
     const fetchMetrics = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/metrics`);
-        if (res.ok) {
-          const data = await res.json();
-          setMetrics(data);
-          setIsConnected(true);
-        }
+        const data = await apiService.fetchMetrics();
+        setMetrics(data);
+        setIsConnected(true);
       } catch (err) {
         // Standalone simulation mode
         setIsConnected(false);
@@ -450,11 +467,8 @@ export default function App() {
 
     const fetchIntelligence = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/intelligence/snapshot?symbol=BTCUSDT&interval=1m&windowHours=48`);
-        if (res.ok) {
-          const data = await res.json();
-          setIntelligence(data);
-        }
+        const data = await apiService.fetchIntelligence();
+        setIntelligence(data);
       } catch (err) {
         // Standalone simulation mode keeps the seeded intelligence snapshot.
       }
@@ -462,11 +476,8 @@ export default function App() {
 
     const fetchAdaptive = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/adaptive/recommendation?symbol=BTCUSDT&interval=1m&currentStrategyName=RSI%20Mean%20Reversion&persistentAdvantageCycles=2&windowHours=48&portfolioValue=10000`);
-        if (res.ok) {
-          const data = await res.json();
-          setAdaptive(data);
-        }
+        const data = await apiService.fetchAdaptive();
+        setAdaptive(data);
       } catch (err) {
         // Standalone simulation mode keeps the seeded adaptive recommendation.
       }
@@ -474,11 +485,8 @@ export default function App() {
 
     const fetchHardening = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/hardening/report`);
-        if (res.ok) {
-          const data = await res.json();
-          setHardening(data);
-        }
+        const data = await apiService.fetchHardening();
+        setHardening(data);
       } catch (err) {
         // Standalone simulation mode keeps the seeded hardening report.
       }
@@ -515,9 +523,11 @@ export default function App() {
     const adaptiveIntervalId = window.setInterval(fetchAdaptive, 10000);
     const hardeningIntervalId = window.setInterval(fetchHardening, 30000);
 
-    // Setup SignalR Hub Connection
+    // Setup SignalR Hub Connection com autorização por Query Token
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${API_BASE_URL}/hubs/metrics`)
+      .withUrl(`${API_BASE_URL}/hubs/metrics`, {
+        accessTokenFactory: () => localStorage.getItem('auth_token') || ''
+      })
       .withAutomaticReconnect()
       .build();
 
@@ -543,8 +553,10 @@ export default function App() {
       window.clearInterval(intelligenceIntervalId);
       window.clearInterval(adaptiveIntervalId);
       window.clearInterval(hardeningIntervalId);
+      window.removeEventListener('auth-success', handleAuthSuccess);
+      window.removeEventListener('auth-failed', handleAuthFailed);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // HFT simulation for logs and counters when not connected
   useEffect(() => {
@@ -783,6 +795,73 @@ export default function App() {
     }
   };
 
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setAuthError('Por favor, preencha todos os campos.');
+      return;
+    }
+    setAuthError('');
+    setIsSubmittingAuth(true);
+    try {
+      await apiService.login(username, password);
+    } catch (err) {
+      setAuthError('Usuário ou senha incorretos.');
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="login-container">
+        <div className="login-card">
+          <div className="login-header">
+            <div className="login-logo">⚡</div>
+            <h2 className="login-title">Acesso Restrito</h2>
+            <p className="login-subtitle">CryptoTrading HFT Control Suite</p>
+          </div>
+          
+          {authError && <div className="login-error">{authError}</div>}
+          
+          <form className="login-form" onSubmit={handleLoginSubmit}>
+            <div className="input-group">
+              <label>Usuário</label>
+              <input 
+                type="text" 
+                className="input-premium" 
+                placeholder="Ex: admin" 
+                value={username} 
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={isSubmittingAuth}
+              />
+            </div>
+            
+            <div className="input-group">
+              <label>Senha</label>
+              <input 
+                type="password" 
+                className="input-premium" 
+                placeholder="••••••••" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmittingAuth}
+              />
+            </div>
+            
+            <button type="submit" className="login-btn" disabled={isSubmittingAuth}>
+              {isSubmittingAuth ? 'Autenticando...' : 'Entrar no Sistema'}
+            </button>
+          </form>
+          
+          <div className="login-footer">
+            Sessão protegida por criptografia HMAC-SHA256
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* ──────────────────────────────────────────────────────── */}
@@ -860,6 +939,30 @@ export default function App() {
           <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
             v10.0 Native-AOT
           </div>
+          <button 
+            onClick={() => apiService.logout()} 
+            style={{ 
+              marginTop: '12px',
+              width: '100%',
+              background: 'rgba(255, 23, 68, 0.12)',
+              border: '1px solid rgba(255, 23, 68, 0.25)',
+              color: '#ff5252',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'var(--transition-fast)'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 23, 68, 0.2)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 23, 68, 0.12)'; }}
+          >
+            Sair da Sessão
+          </button>
         </div>
       </aside>
 
