@@ -13,6 +13,11 @@ builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
 //
 //
 
+builder.Services.AddSingleton<CryptoTrading.Application.Services.StrategyRegistry>();
+builder.Services.AddSingleton<CryptoTrading.Contracts.Interfaces.IRiskEngine, CryptoTrading.Application.Services.RiskEngine>();
+builder.Services.AddSingleton<CryptoTrading.Application.Services.PaperTradeExecutor>();
+builder.Services.AddHostedService<StrategyRunnerWorker>();
+
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();

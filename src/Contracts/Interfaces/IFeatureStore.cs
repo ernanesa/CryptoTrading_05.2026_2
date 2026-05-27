@@ -65,6 +65,9 @@ public interface IFeatureStore
     /// <summary>
     /// Grava uma auditoria de decisão de trading (sinal aceito ou rejeitado e por qual regra).
     /// </summary>
+    Task SavePaperOrderAsync(PaperOrder order);
+    Task<IEnumerable<PaperOrder>> GetActivePaperOrdersAsync(string symbol);
+
     Task SaveDecisionAuditAsync(DecisionAudit audit);
 
     /// <summary>
