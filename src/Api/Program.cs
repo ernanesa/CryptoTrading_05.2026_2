@@ -61,6 +61,7 @@ builder.Services.AddSingleton<TradeAttributionService>();
 builder.Services.AddSingleton<WalkForwardEvaluator>();
 builder.Services.AddSingleton<AdaptiveMetricsAggregator>();
 builder.Services.AddSingleton<AdaptiveFeedbackStateProjector>();
+builder.Services.AddSingleton<AdaptiveDecisionExplainer>();
 builder.Services.AddSingleton<AdaptiveStrategyOrchestrator>();
 builder.Services.AddSingleton<DatasetBuilderService>();
 builder.Services.AddSingleton<ModelDriftMonitor>();
@@ -661,7 +662,13 @@ app.MapGet("/api/testnet/audits", async (IFeatureStore store, int limit = 100) =
 
 
 // 14. Adaptive Orchestration API
-app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest request, AdaptiveStrategyOrchestrator orchestrator, AdaptiveFeedbackStateProjector feedbackState, AdaptiveMetricsAggregator metricsAggregator, IFeatureStore store) =>
+app.MapPost("/api/orchestration/decide", async (
+    AdaptiveOrchestrationRequest request,
+    AdaptiveStrategyOrchestrator orchestrator,
+    AdaptiveFeedbackStateProjector feedbackState,
+    AdaptiveMetricsAggregator metricsAggregator,
+    AdaptiveDecisionExplainer explainer,
+    IFeatureStore store) =>
 {
     var metricSymbol = request.Symbol.ToUpperInvariant();
     var metricInterval = string.IsNullOrWhiteSpace(request.Interval) ? "unknown" : request.Interval;
@@ -700,7 +707,8 @@ app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest req
         CandidateStrategy = decision.CandidateStrategyName,
         StrategyScores = decision.StrategyScores,
         Reasons = decision.Reasons,
-        Decision = decision
+        Decision = decision,
+        ExplanationMarkdown = explainer.Explain(decision)
     });
 })
 .WithName("AdaptiveOrchestrationDecide");
