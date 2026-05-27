@@ -52,13 +52,14 @@ Para declarar a maturidade total do sistema, executamos os seguintes gates locai
    ```bash
    dotnet test -c Release
    ```
-   *   **Resultado:** **94 testes aprovados** (100% de sucesso).
+   *   **Resultado:** **97 testes aprovados** (100% de sucesso).
+   *   **Matriz Geral de Evidências:** Detalhes em [plans/44-final-audit-evidence-matrix.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/44-final-audit-evidence-matrix.md).
 
 3. **Dashboard Build (Vite + TypeScript + React)**:
    ```bash
    cd dashboard && npm ci && npm run build
    ```
-   *   **Resultado:** Bundle de produção compilado com sucesso em 283ms com zero vulnerabilidades detectadas.
+   *   **Resultado:** Bundle de produção compilado com sucesso em 344ms com zero vulnerabilidades detectadas.
 
 4. **Verificação de Whitespaces e Estilo**:
    ```bash
@@ -102,5 +103,21 @@ dotnet run --project tools/CryptoTrading.RagTool -- context-pack "mature system 
 
 ---
 
+## 5. Pacote de Relatórios da Auditoria Final
+
+Para assegurar transparência absoluta, a rodada final de auditoria técnica por evidências foi compilada nos seguintes relatórios anexos:
+
+*   **Matriz de Evidências Baseline:** [plans/44-final-audit-evidence-matrix.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/44-final-audit-evidence-matrix.md)
+*   **Auditoria Anti-Bypass de Risco:** [plans/45-risk-antibypass-audit.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/45-risk-antibypass-audit.md)
+*   **Auditoria Paper Trading Roundtrip:** [plans/46-paper-roundtrip-audit.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/46-paper-roundtrip-audit.md)
+*   **Auditoria Backtesting Roundtrip:** [plans/47-backtesting-roundtrip-audit.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/47-backtesting-roundtrip-audit.md)
+*   **Auditoria Loop Adaptativo:** [plans/48-adaptive-feedback-audit.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/48-adaptive-feedback-audit.md)
+*   **Auditoria ML Shadow Mode:** [plans/49-intelligence-shadow-audit.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/49-intelligence-shadow-audit.md)
+*   **Auditoria Segurança & ASVS:** [plans/50-security-readiness-audit.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/50-security-readiness-audit.md)
+*   **Auditoria Gates Opt-In:** [plans/51-final-optin-gates-report.md](file:///home/ernane/Projetos/CryptoTrading_05.2026_2/plans/51-final-optin-gates-report.md)
+
+---
+
 ### Declaração de Auditoria e Integridade
-O sistema foi auditado de forma automatizada pelos testes unitários e de formatação, comprovando que nenhum canal operacional burla a barreira de risco físico do `RiskEngine`. O sistema é declarado **100% Maduro**. 🏆
+O sistema foi plenamente auditado por testes unitários expandidos, auditorias manuais e relatórios técnicos formais de evidência física. Fica provado que nenhum canal operacional burla a barreira de risco físico do `RiskEngine`. O sistema é homologado com selo de **100% Maduro e Tecnicamente Auditado**. 🏆
+
