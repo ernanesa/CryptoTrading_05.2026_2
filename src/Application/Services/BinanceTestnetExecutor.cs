@@ -16,6 +16,7 @@ public class BinanceTestnetExecutor
     private readonly ExchangeRuleValidator _validator;
     private readonly ILogger<BinanceTestnetExecutor> _logger;
     private readonly IMetricsService? _metrics;
+    private readonly IRiskEngine _riskEngine;
     private readonly bool _isEnabled;
     private readonly string _apiKey;
     private readonly string _apiSecret;
@@ -25,11 +26,13 @@ public class BinanceTestnetExecutor
         ExchangeRuleValidator validator,
         IConfiguration configuration,
         ILogger<BinanceTestnetExecutor> _loggerInst,
+        IRiskEngine riskEngine,
         IMetricsService? metrics = null)
     {
         _store = store;
         _validator = validator;
         _logger = _loggerInst;
+        _riskEngine = riskEngine;
         _metrics = metrics;
 
         // Configuracoes lidas sem ConfigurationBinder para manter compatibilidade Native AOT.
@@ -100,6 +103,31 @@ public class BinanceTestnetExecutor
 
             return order;
         }
+
+                // 3.5. RiskEngine Validation
+        var signal = new TradeSignal
+        {
+            Symbol = order.Symbol,
+            Type = order.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase) ? CryptoTrading.Domain.Enums.TradeSignalType.Buy : CryptoTrading.Domain.Enums.TradeSignalType.Sell,
+            Timestamp = DateTime.UtcNow,
+            Description = "Testnet Order Execution"
+        };
+        var balances = await GetAccountSnapshotAsync();
+        var riskResult = _riskEngine.ValidateSignal(signal, order.Price, 0.01m, balances, Enumerable.Empty<PaperTrade>(), CryptoTrading.Domain.Enums.RiskStatus.Normal);
+        
+        if (!riskResult.IsApproved)
+        {
+            order.Status = "REJECTED";
+            order.UpdatedAt = DateTime.UtcNow;
+            await _store.SaveTestnetOrderAsync(order);
+
+            await _store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = order.Symbol, StrategyName = "Manual/Testnet", SignalType = signal.Type.ToString().ToUpper(), Price = order.Price, Timestamp = DateTime.UtcNow, Decision = "REJECTED", Reason = $"Bloqueado pelo RiskEngine: {riskResult.Reason}" });
+            await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog { Symbol = order.Symbol, Action = "RISK_VALIDATION_FAILED", Status = "FAILED", Details = $"Ordem bloqueada pelo RiskEngine: {riskResult.Reason}" });
+
+            return order;
+        }
+
+        await _store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = order.Symbol, StrategyName = "Manual/Testnet", SignalType = signal.Type.ToString().ToUpper(), Price = order.Price, Timestamp = DateTime.UtcNow, Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine" });
 
         // 4. Fluxo Simulado / Dry-Run (se Testnet estiver desabilitada)
         if (!_isEnabled)
