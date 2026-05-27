@@ -10,8 +10,6 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-
-
         if (args.Length < 1)
         {
             ShowUsage();
@@ -27,6 +25,10 @@ public static class Program
 
             switch (command)
             {
+                case "--help":
+                case "-h":
+                    ShowUsage();
+                    return 0;
                 case "ingest":
                     await RunIngestionAsync(repoRoot, resetIndexedCollections: false);
                     break;
@@ -45,14 +47,24 @@ public static class Program
                     await RunQueryAsync(args[1]);
                     break;
 
-                case "optimize":
+                case "optimize-input":
                     if (args.Length < 2)
                     {
                         Console.WriteLine("Erro: Defina o objetivo/pedido.");
-                        Console.WriteLine("Uso: dotnet run --project tools/CryptoTrading.RagTool -- optimize \"<seu pedido>\"");
+                        Console.WriteLine("Uso: dotnet run --project tools/CryptoTrading.RagTool -- optimize-input \"<seu pedido>\"");
                         return 1;
                     }
-                    await RunOptimizeAsync(args[1]);
+                    await RunOptimizeInputAsync(args[1]);
+                    break;
+                    
+                case "context-pack":
+                    if (args.Length < 2)
+                    {
+                        Console.WriteLine("Erro: Defina o objetivo/pedido.");
+                        Console.WriteLine("Uso: dotnet run --project tools/CryptoTrading.RagTool -- context-pack \"<seu pedido>\"");
+                        return 1;
+                    }
+                    await RunContextPackAsync(args[1]);
                     break;
 
                 default:
@@ -82,7 +94,8 @@ public static class Program
         Console.WriteLine("  ingest                  Lê todos os planos e indexa no Qdrant.");
         Console.WriteLine("  refresh                 Recria docs/código no Qdrant e executa ingestão limpa.");
         Console.WriteLine("  query \"<pergunta>\"      Realiza busca semântica por documentos relevantes.");
-        Console.WriteLine("  optimize \"<pedido>\"     Gera um prompt completo e estruturado para agentes de IA.");
+        Console.WriteLine("  optimize-input \"<pedido>\" Gera um prompt completo e estruturado para agentes de IA.");
+        Console.WriteLine("  context-pack \"<pedido>\"   Retorna apenas o contexto agrupado.");
         Console.WriteLine("============================================================\n");
     }
 
@@ -97,8 +110,7 @@ public static class Program
             }
             current = Directory.GetParent(current)?.FullName;
         }
-        
-        // Fallback para o diretório de execução do Program.cs caso esteja sendo executado de forma direta
+
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         current = baseDir;
         while (current != null)
@@ -119,68 +131,58 @@ public static class Program
             ? "\n=== INICIANDO REFRESH LIMPO DO RAG ==="
             : "\n=== INICIANDO INGESTÃO DE PLANOS & DOCUMENTOS ===");
 
-        // 1. Inicializa Serviços
         using var qdrant = new QdrantService();
         using var embedder = new EmbeddingService();
 
-        // Inicializa coleções
-        await qdrant.InitializeCollectionsAsync();
         if (resetIndexedCollections)
         {
             await qdrant.RefreshIndexedCollectionsAsync();
         }
-
-        // 2. Coleta arquivos markdown
-        var plansDir = Path.Combine(repoRoot, "plans");
-        var markdownFiles = Directory.GetFiles(plansDir, "*.md", SearchOption.AllDirectories).ToList();
-        
-        // Adiciona também o README.md da raiz do workspace
-        var rootReadme = Path.Combine(repoRoot, "README.md");
-        if (File.Exists(rootReadme))
+        else
         {
-            markdownFiles.Add(rootReadme);
+            await qdrant.InitializeCollectionsAsync();
         }
+
+        Console.WriteLine("\n=== COLETANDO ARQUIVOS DE DOCUMENTAÇÃO ===");
+        var plansPath = Path.Combine(repoRoot, "plans");
+        var markdownFiles = Directory.GetFiles(plansPath, "*.md", SearchOption.AllDirectories).ToList();
+
+        var rootReadme = Path.Combine(repoRoot, "README.md");
+        if (File.Exists(rootReadme)) markdownFiles.Add(rootReadme);
 
         Console.WriteLine($"Encontrados {markdownFiles.Count} arquivos markdown para indexação.");
 
         var allChunks = new List<MarkdownChunk>();
         foreach (var file in markdownFiles)
         {
-            Console.WriteLine($"Processando: {Path.GetFileName(file)}...");
             var fileChunks = MarkdownChunker.ParseFile(file, repoRoot);
             allChunks.AddRange(fileChunks);
         }
 
-        Console.WriteLine($"Total de chunks de texto gerados para documentação: {allChunks.Count}");
-
-        // 3. Gera Embeddings e envia em lote para cryptotrading_docs
-        Console.WriteLine("Gerando embeddings de documentação via CPU (ONNX MiniLM)...");
-        var pointsToInsert = new List<(MarkdownChunk Chunk, float[] Vector)>();
+        var docsChunks = new List<(MarkdownChunk Chunk, float[] Vector)>();
+        var decisionsChunks = new List<(MarkdownChunk Chunk, float[] Vector)>();
+        var tasksChunks = new List<(MarkdownChunk Chunk, float[] Vector)>();
 
         for (int i = 0; i < allChunks.Count; i++)
         {
             var chunk = allChunks[i];
-
             try
             {
                 var vector = embedder.GenerateEmbedding(chunk.Content);
-                if (i < 5)
-                {
-                    Console.WriteLine($"Doc Chunk {i + 1}: tamanho do vetor = {vector.Length}");
-                }
-                pointsToInsert.Add((chunk, vector));
+                if (chunk.SourceType == "decision") decisionsChunks.Add((chunk, vector));
+                else if (chunk.SourceType == "task") tasksChunks.Add((chunk, vector));
+                else docsChunks.Add((chunk, vector));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n[AVISO] Erro ao gerar embedding para chunk {i}: {ex.Message}");
+                Console.WriteLine($"Erro chunk: {ex.Message}");
             }
         }
-        Console.WriteLine("Embeddings de documentação gerados com sucesso!");
 
-        // Envia para o Qdrant
-        await qdrant.UpsertChunksAsync("cryptotrading_docs", pointsToInsert);
+        await qdrant.UpsertChunksAsync("cryptotrading_docs", docsChunks);
+        await qdrant.UpsertChunksAsync("cryptotrading_decisions", decisionsChunks);
+        await qdrant.UpsertChunksAsync("cryptotrading_tasks", tasksChunks);
 
-        // 4. Coleta arquivos de código do projeto
         Console.WriteLine("\n=== COLETANDO ARQUIVOS DE CÓDIGO DO PROJETO ===");
         var allFiles = Directory.GetFiles(repoRoot, "*.*", SearchOption.AllDirectories);
         var codeFiles = allFiles.Where(IsCodeFile).ToList();
@@ -201,33 +203,22 @@ public static class Program
             }
         }
 
-        Console.WriteLine($"Total de chunks de código gerados: {allCodeChunks.Count}");
-
-        // 5. Gera Embeddings e envia para cryptotrading_code
-        Console.WriteLine("Gerando embeddings de código via CPU (ONNX MiniLM)...");
         var codePointsToInsert = new List<(MarkdownChunk Chunk, float[] Vector)>();
 
         for (int i = 0; i < allCodeChunks.Count; i++)
         {
             var chunk = allCodeChunks[i];
-
             try
             {
                 var vector = embedder.GenerateEmbedding(chunk.Content);
-                if (i < 5)
-                {
-                    Console.WriteLine($"Code Chunk {i + 1}: tamanho do vetor = {vector.Length}");
-                }
                 codePointsToInsert.Add((chunk, vector));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n[AVISO] Erro ao gerar embedding para chunk de código {i}: {ex.Message}");
+                Console.WriteLine($"Erro chunk code: {ex.Message}");
             }
         }
-        Console.WriteLine("Embeddings de código gerados com sucesso!");
 
-        // Envia para o Qdrant
         await qdrant.UpsertChunksAsync("cryptotrading_code", codePointsToInsert);
 
         Console.ForegroundColor = ConsoleColor.Green;
@@ -238,23 +229,29 @@ public static class Program
     private static async Task RunQueryAsync(string queryText)
     {
         Console.WriteLine($"\n=== REALIZANDO BUSCA SEMÂNTICA ===");
-        
         using var qdrant = new QdrantService();
         using var embedder = new EmbeddingService();
 
-        Console.WriteLine("Gerando embedding para a pergunta...");
         var queryVector = embedder.GenerateEmbedding(queryText);
 
-        Console.WriteLine("Buscando no Qdrant...");
-        var results = await qdrant.SearchAsync("cryptotrading_docs", queryVector, limit: 3);
+        var collections = new[] { "cryptotrading_docs", "cryptotrading_decisions", "cryptotrading_tasks", "cryptotrading_code" };
+        var allResults = new List<Qdrant.Client.Grpc.ScoredPoint>();
+
+        foreach (var col in collections)
+        {
+            var results = await qdrant.SearchAsync(col, queryVector, limit: 2);
+            allResults.AddRange(results);
+        }
+
+        allResults = allResults.OrderByDescending(r => r.Score).Take(5).ToList();
 
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"\nResultados encontrados: {results.Count}\n");
+        Console.WriteLine($"\nResultados encontrados: {allResults.Count}\n");
         Console.ResetColor();
 
-        for (int i = 0; i < results.Count; i++)
+        for (int i = 0; i < allResults.Count; i++)
         {
-            var r = results[i];
+            var r = allResults[i];
             var payload = r.Payload;
             var source = payload.TryGetValue("source", out var s) ? s.StringValue : "Desconhecido";
             var section = payload.TryGetValue("section", out var sec) ? sec.StringValue : "Geral";
@@ -272,16 +269,25 @@ public static class Program
         }
     }
 
-    private static async Task RunOptimizeAsync(string rawInput)
+    private static async Task<string> BuildContextPackAsync(string rawInput)
     {
         using var qdrant = new QdrantService();
         using var embedder = new EmbeddingService();
 
         var queryVector = embedder.GenerateEmbedding(rawInput);
-        var results = await qdrant.SearchAsync("cryptotrading_docs", queryVector, limit: 3);
+        var collections = new[] { "cryptotrading_docs", "cryptotrading_decisions", "cryptotrading_tasks", "cryptotrading_code" };
+        var allResults = new List<Qdrant.Client.Grpc.ScoredPoint>();
+
+        foreach (var col in collections)
+        {
+            var results = await qdrant.SearchAsync(col, queryVector, limit: 2);
+            allResults.AddRange(results);
+        }
+
+        allResults = allResults.OrderByDescending(r => r.Score).Take(5).ToList();
 
         var contextPack = new System.Text.StringBuilder();
-        foreach (var r in results)
+        foreach (var r in allResults)
         {
             var payload = r.Payload;
             var source = payload.TryGetValue("source", out var s) ? s.StringValue : "Desconhecido";
@@ -292,6 +298,19 @@ public static class Program
             contextPack.AppendLine(content);
         }
 
+        return contextPack.ToString();
+    }
+
+    private static async Task RunContextPackAsync(string rawInput)
+    {
+        var context = await BuildContextPackAsync(rawInput);
+        Console.WriteLine(context);
+    }
+
+    private static async Task RunOptimizeInputAsync(string rawInput)
+    {
+        var contextPack = await BuildContextPackAsync(rawInput);
+
         var optimizedPrompt = $@"Você está trabalhando no repositório ernanesa/CryptoTrading_05.2026_2.
 
 Objetivo:
@@ -300,12 +319,27 @@ Objetivo:
 Contexto recuperado do RAG:
 {contextPack}
 
+Arquivos Prováveis (Com base no contexto, verifique e edite):
+[Liste os arquivos principais aqui]
+
+Riscos e Precauções:
+- não bypassar RiskEngine
+- seguir .NET-first e Dapper-first
+- verificar testes existentes
+
+Testes:
+- defina testes de unidade ou integração
+- execute validações necessárias
+
+Critérios de Aceite:
+- [Preecher critérios baseados no objetivo]
+
+Paralelização (se aplicável):
+- identifique se há algo que pode ser quebrado em sub-agentes
+
 Regras obrigatórias:
 - escrever somente neste repositório;
 - consultar planos relevantes;
-- seguir .NET-first;
-- seguir Dapper-first;
-- não bypassar RiskEngine;
 - atualizar checklists ao final.
 
 Antes de codar, gere um plano curto e diga quais arquivos serão alterados.";

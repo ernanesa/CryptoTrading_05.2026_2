@@ -14,22 +14,21 @@ public class QdrantService : IDisposable
         "cryptotrading_docs",
         "cryptotrading_code",
         "cryptotrading_decisions",
-        "cryptotrading_prompts",
-        "cryptotrading_tasks",
-        "cryptotrading_external_refs"
+        "cryptotrading_tasks"
     };
 
     private static readonly string[] IndexedCollections =
     {
         "cryptotrading_docs",
-        "cryptotrading_code"
+        "cryptotrading_code",
+        "cryptotrading_decisions",
+        "cryptotrading_tasks"
     };
 
     private readonly QdrantClient _client;
 
     public QdrantService(string host = "localhost", int port = 6334)
     {
-        // Conecta ao Qdrant via gRPC (porta padrão 6334)
         _client = new QdrantClient(host, port);
     }
 
@@ -57,7 +56,7 @@ public class QdrantService : IDisposable
 
     public async Task RefreshIndexedCollectionsAsync()
     {
-        Console.WriteLine("Recriando coleções indexadas de documentação/código no Qdrant...");
+        Console.WriteLine("Recriando coleções indexadas no Qdrant...");
 
         foreach (var col in IndexedCollections)
         {
@@ -143,7 +142,6 @@ public class QdrantService : IDisposable
             Console.WriteLine($"Erro ao inserir pontos no Qdrant: {ex.Message}");
         }
     }
-
     public async Task<IReadOnlyList<ScoredPoint>> SearchAsync(string collectionName, float[] queryVector, int limit = 3)
     {
         try

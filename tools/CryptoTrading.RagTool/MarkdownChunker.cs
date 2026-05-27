@@ -31,7 +31,6 @@ public static class MarkdownChunker
         var currentSection = "";
         var currentText = new List<string>();
 
-        // Tentar encontrar o título H1 principal na página inteira
         var titleMatch = Regex.Match(content, @"^#\s+(.+)$", RegexOptions.Multiline);
         if (titleMatch.Success)
         {
@@ -88,16 +87,18 @@ public static class MarkdownChunker
         foreach (var chunk in chunks)
         {
             var text = chunk.Text.Trim();
-            if (text.Length < 20) continue; // Pular chunks vazios ou insignificantes
+            if (text.Length < 20) continue;
 
-            var sourceType = "plan";
-            if (relativePath.Contains("adr", StringComparison.OrdinalIgnoreCase))
+            var sourceType = "doc";
+            if (relativePath.Contains("adr-", StringComparison.OrdinalIgnoreCase))
             {
-                sourceType = "adr";
+                sourceType = "decision";
             }
-            else if (relativePath.Contains("readme", StringComparison.OrdinalIgnoreCase))
+            else if (relativePath.Contains("checklist", StringComparison.OrdinalIgnoreCase) || 
+                     relativePath.Contains("task", StringComparison.OrdinalIgnoreCase) ||
+                     relativePath.Contains("plan", StringComparison.OrdinalIgnoreCase))
             {
-                sourceType = "plan";
+                sourceType = "task";
             }
 
             var chunkContent = $"Documento: {relativePath}\nSeção: {chunk.Section}\n\n{text}";
@@ -108,7 +109,7 @@ public static class MarkdownChunker
                 Title: chunk.H1,
                 Section: chunk.Section ?? chunk.H1,
                 SourceType: sourceType,
-                CreatedAt: "2026-05-20",
+                CreatedAt: DateTime.UtcNow.ToString("yyyy-MM-dd"),
                 IndexedAt: indexedAt
             ));
         }
