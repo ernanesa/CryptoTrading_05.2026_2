@@ -10,10 +10,11 @@ public class PaperTradingTests
 {
     private readonly RiskEngine _riskEngine = new();
 
-    private class InMemoryFeatureStore : IFeatureStore
+    public class InMemoryFeatureStore : IFeatureStore
     {
         public List<Candle> Candles { get; set; } = new();
         public List<CandleFeature> Features { get; set; } = new();
+        public List<PaperOrder> _orders { get; set; } = new();
         public List<WalletBalance> Balances { get; set; } = new()
         {
             new WalletBalance { Symbol = "USDT", Free = 10000m, Locked = 0m, UpdatedAt = DateTime.UtcNow }
@@ -71,6 +72,20 @@ public class PaperTradingTests
 
         public Task SaveDecisionAuditAsync(DecisionAudit audit) { Audits.Add(audit); return Task.CompletedTask; }
         public Task<IEnumerable<DecisionAudit>> GetDecisionAuditsAsync(int limit = 100) => Task.FromResult(Audits.Take(limit));
+
+        public Task SavePaperOrderAsync(PaperOrder order)
+        {
+            if (order.Id == 0) order.Id = _orders.Count + 1;
+            var existing = _orders.FirstOrDefault(o => o.Id == order.Id);
+            if (existing != null) _orders.Remove(existing);
+            _orders.Add(order);
+            return Task.CompletedTask;
+        }
+        public Task<IEnumerable<PaperOrder>> GetActivePaperOrdersAsync(string symbol)
+        {
+            var active = _orders.Where(o => o.Symbol == symbol && (o.Status == OrderStatus.New || o.Status == OrderStatus.Open || o.Status == OrderStatus.PartiallyFilled));
+            return Task.FromResult(active);
+        }
 
         public Task ClearPaperTradingDataAsync()
         {
@@ -198,7 +213,7 @@ public class PaperTradingTests
         var audit = await executor.ProcessSignalAsync(strategy, currentPoint);
 
         Assert.Equal("APPROVED", audit.Decision);
-        Assert.Contains("COMPRA executada", audit.Reason);
+        Assert.Contains("ORDEM CADASTRADA (COMPRA)", audit.Reason);
         Assert.Single(store.Trades);
         
         var usdtBalance = store.Balances.First(b => b.Symbol == "USDT");

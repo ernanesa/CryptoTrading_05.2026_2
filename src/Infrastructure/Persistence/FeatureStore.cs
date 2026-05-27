@@ -243,23 +243,23 @@ public class FeatureStore : IFeatureStore
                 RETURNING id;
             ";
             var typeStr = position.Type.ToString();
-            position.Id = await conn.ExecuteScalarAsync<long>(insertSql, new { position.Symbol, TypeStr = typeStr, position.EntryPrice, position.Quantity, position.EntryTime, position.ExitPrice, position.ExitTime, position.RealizedPnL, position.FeesPaid, position.StopLossPrice, position.TakeProfitPrice, position.IsClosed });
+            position.Id = await conn.ExecuteScalarAsync<long>(insertSql, new { position.Symbol, TypeStr = typeStr, position.EntryPrice, position.Quantity, position.EntryTime, position.ExitPrice, position.ExitTime, position.RealizedPnL, position.UnrealizedPnL, position.FeesPaid, position.StopLossPrice, position.TakeProfitPrice, position.IsClosed, StateStr = position.State.ToString() });
         }
         else
         {
             const string updateSql = @"
                 UPDATE paper_positions
-                SET exit_price = @ExitPrice, exit_time = @ExitTime, realized_pnl = @RealizedPnL, fees_paid = @FeesPaid, stop_loss_price = @StopLossPrice, take_profit_price = @TakeProfitPrice, is_closed = @IsClosed
+                SET exit_price = @ExitPrice, exit_time = @ExitTime, realized_pnl = @RealizedPnL, unrealized_pnl = @UnrealizedPnL, fees_paid = @FeesPaid, stop_loss_price = @StopLossPrice, take_profit_price = @TakeProfitPrice, is_closed = @IsClosed, state = @StateStr, quantity = @Quantity
                 WHERE id = @Id;
             ";
-            await conn.ExecuteAsync(updateSql, position);
+            await conn.ExecuteAsync(updateSql, new { position.Id, position.Quantity, position.ExitPrice, position.ExitTime, position.RealizedPnL, position.UnrealizedPnL, position.FeesPaid, position.StopLossPrice, position.TakeProfitPrice, position.IsClosed, StateStr = position.State.ToString() });
         }
     }
 
     public async Task<Position?> GetActivePaperPositionAsync(string symbol)
     {
         const string sql = @"
-        SELECT id, symbol, type AS TypeStr, entry_price AS EntryPrice, quantity AS Quantity, entry_time AS EntryTime, exit_price AS ExitPrice, exit_time AS ExitTime, realized_pnl AS RealizedPnL, fees_paid AS FeesPaid, stop_loss_price AS StopLossPrice, take_profit_price AS TakeProfitPrice, is_closed AS IsClosed 
+        SELECT id, symbol, type AS TypeStr, entry_price AS EntryPrice, quantity AS Quantity, entry_time AS EntryTime, exit_price AS ExitPrice, exit_time AS ExitTime, realized_pnl AS RealizedPnL, unrealized_pnl AS UnrealizedPnL, fees_paid AS FeesPaid, stop_loss_price AS StopLossPrice, take_profit_price AS TakeProfitPrice, is_closed AS IsClosed, state AS StateStr 
         FROM paper_positions 
         WHERE symbol = @Symbol AND is_closed = FALSE
         ORDER BY entry_time DESC 
@@ -280,10 +280,11 @@ public class FeatureStore : IFeatureStore
             ExitPrice = result.exitprice,
             ExitTime = result.exittime,
             RealizedPnL = result.realizedpnl,
+            UnrealizedPnL = result.unrealizedpnl ?? 0m,
             FeesPaid = result.feespaid,
             StopLossPrice = result.stoplossprice,
             TakeProfitPrice = result.takeprofitprice,
-            IsClosed = result.isclosed
+            State = result.statestr != null ? Enum.Parse<CryptoTrading.Domain.Enums.PositionState>((string)result.statestr) : CryptoTrading.Domain.Enums.PositionState.Open
         };
     }
 
@@ -405,5 +406,35 @@ public class FeatureStore : IFeatureStore
 
         await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryAsync<TestnetAuditLog>(sql, new { Limit = limit });
+    }
+
+    public async Task SavePaperOrderAsync(PaperOrder order)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        if (order.Id == 0)
+        {
+            const string sql = @"
+                INSERT INTO paper_orders (symbol, client_order_id, side, type, price, quantity, filled_quantity, average_fill_price, fee_paid, status, created_at, updated_at)
+                VALUES (@Symbol, @ClientOrderId, @Side, @TypeStr, @Price, @Quantity, @FilledQuantity, @AverageFillPrice, @FeePaid, @StatusStr, @CreatedAt, @UpdatedAt)
+                RETURNING id;";
+            order.Id = await conn.ExecuteScalarAsync<long>(sql, new { order.Symbol, order.ClientOrderId, order.Side, TypeStr = order.Type.ToString(), order.Price, order.Quantity, order.FilledQuantity, order.AverageFillPrice, order.FeePaid, StatusStr = order.Status.ToString(), order.CreatedAt, UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow });
+        }
+        else
+        {
+            const string sql = @"
+                UPDATE paper_orders
+                SET filled_quantity = @FilledQuantity, average_fill_price = @AverageFillPrice, fee_paid = @FeePaid, status = @StatusStr, updated_at = @UpdatedAt
+                WHERE id = @Id;";
+            await conn.ExecuteAsync(sql, new { order.Id, order.FilledQuantity, order.AverageFillPrice, order.FeePaid, StatusStr = order.Status.ToString(), UpdatedAt = DateTime.UtcNow });
+        }
+    }
+
+    public async Task<IEnumerable<PaperOrder>> GetActivePaperOrdersAsync(string symbol)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        const string sql = @"
+            SELECT * FROM paper_orders 
+            WHERE symbol = @symbol AND status IN ('New', 'Open', 'PartiallyFilled')";
+        return await conn.QueryAsync<PaperOrder>(sql, new { symbol });
     }
 }

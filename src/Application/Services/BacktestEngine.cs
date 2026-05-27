@@ -69,7 +69,7 @@ public class BacktestEngine
                             Quantity = quantity,
                             EntryTime = current.Candle.OpenTime,
                             FeesPaid = entryFee,
-                            IsClosed = false
+                            State = CryptoTrading.Domain.Enums.PositionState.Open
                         };
 
                         capital -= (quantity * executionPrice) + entryFee;
