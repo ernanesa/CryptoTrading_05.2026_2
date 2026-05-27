@@ -135,3 +135,10 @@ Antes de qualquer atividade:
 
 Esses repositórios são apenas leitura para este ciclo.
 - Adicionado integração Real com Binance Testnet (opcional, protegido por RiskEngine)
+
+## Observability & Real State
+O dashboard foi refatorado para ter um controle global de estado (Offline, Simulation, Paper, Testnet).
+Foi adicionada telemetria com OpenTelemetry no backend (.NET) para exportação de métricas Prometheus.
+Você pode rodar Prometheus e Grafana localmente usando:
+`docker-compose up -d`
+Smoke tests e2e foram adicionados via Playwright.

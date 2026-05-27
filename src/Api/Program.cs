@@ -5,6 +5,9 @@ using CryptoTrading.Domain.Entities;
 using CryptoTrading.Domain.Enums;
 using CryptoTrading.Api.Hubs;
 using CryptoTrading.Api.Services;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +72,8 @@ builder.Services.AddSignalR();
 builder.Services.AddHostedService<MetricsBroadcaster>();
 builder.Services.AddOpenApi();
 
+builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("CryptoTrading.Api")).AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation().AddPrometheusExporter());
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -78,6 +83,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseHttpsRedirection();
+
+app.MapPrometheusScrapingEndpoint();
 
 // Mapeamento do Hub de métricas do SignalR
 app.MapHub<MetricsHub>("/hubs/metrics");

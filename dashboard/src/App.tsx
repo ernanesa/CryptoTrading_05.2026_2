@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAppStore } from './store';
+
 import * as signalR from '@microsoft/signalr';
 import { 
   TrendingUp, 
@@ -194,7 +196,8 @@ interface AuditLog {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'market' | 'backtest' | 'paper' | 'risk' | 'testnet' | 'logs'>('overview');
-  const [isConnected, setIsConnected] = useState(false);
+  const { isConnected, setIsConnected, setMode } = useAppStore();
+  useEffect(() => { setMode(isConnected ? 'Testnet Real' : 'Simulation'); }, [isConnected]);
   const [metrics, setMetrics] = useState<MetricsSnapshot>({
     uptimeSeconds: 0,
     candlesReceived: 0,
@@ -781,7 +784,7 @@ export default function App() {
         <div className="sidebar-footer">
           <div className="system-status">
             <span className={`status-dot ${isConnected ? 'active' : ''}`} style={{ backgroundColor: isConnected ? '#00e676' : '#ffb300', boxShadow: isConnected ? '0 0 10px #00e676' : '0 0 10px #ffb300' }}></span>
-            <span>{isConnected ? 'API Real-Time Conectada' : 'Modo Simulado Local'}</span>
+            <span>{isConnected ? 'API Real-Time Conectada' : 'Simulation Mode'}</span>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
             v10.0 Native-AOT
