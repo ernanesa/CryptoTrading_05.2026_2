@@ -22,8 +22,8 @@ public class BacktestRepository : IBacktestRepository
     public async Task SaveReportAsync(BacktestReport report)
     {
         const string runSql = @"
-        INSERT INTO backtest_runs (strategy_name, symbol, interval, start_time, end_time, initial_capital, final_capital, total_trades, winning_trades, losing_trades, win_rate, max_drawdown_percent, sharpe_ratio, profit_factor)
-        VALUES (@StrategyName, @Symbol, @Interval, @StartTime, @EndTime, @InitialCapital, @FinalCapital, @TotalTrades, @WinningTrades, @LosingTrades, @WinRate, @MaxDrawdownPercent, @SharpeRatio, @ProfitFactor)
+        INSERT INTO backtest_runs (strategy_name, symbol, interval, start_time, end_time, initial_capital, final_capital, total_trades, winning_trades, losing_trades, win_rate, max_drawdown_percent, sharpe_ratio, profit_factor, sortino_ratio, calmar_ratio)
+        VALUES (@StrategyName, @Symbol, @Interval, @StartTime, @EndTime, @InitialCapital, @FinalCapital, @TotalTrades, @WinningTrades, @LosingTrades, @WinRate, @MaxDrawdownPercent, @SharpeRatio, @ProfitFactor, @SortinoRatio, @CalmarRatio)
         RETURNING id;";
 
         const string tradeSql = @"
@@ -69,7 +69,7 @@ public class BacktestRepository : IBacktestRepository
     public async Task<IEnumerable<BacktestReport>> GetReportsAsync(int limit = 50)
     {
         const string sql = @"
-        SELECT id, strategy_name AS StrategyName, symbol AS Symbol, interval AS Interval, start_time AS StartTime, end_time AS EndTime, initial_capital AS InitialCapital, final_capital AS FinalCapital, total_trades AS TotalTrades, winning_trades AS WinningTrades, losing_trades AS LosingTrades, win_rate AS WinRate, max_drawdown_percent AS MaxDrawdownPercent, sharpe_ratio AS SharpeRatio, profit_factor AS ProfitFactor 
+        SELECT id, strategy_name AS StrategyName, symbol AS Symbol, interval AS Interval, start_time AS StartTime, end_time AS EndTime, initial_capital AS InitialCapital, final_capital AS FinalCapital, total_trades AS TotalTrades, winning_trades AS WinningTrades, losing_trades AS LosingTrades, win_rate AS WinRate, max_drawdown_percent AS MaxDrawdownPercent, sharpe_ratio AS SharpeRatio, profit_factor AS ProfitFactor, sortino_ratio AS SortinoRatio, calmar_ratio AS CalmarRatio 
         FROM backtest_runs 
         ORDER BY executed_at DESC 
         LIMIT @Limit;";
@@ -81,7 +81,7 @@ public class BacktestRepository : IBacktestRepository
     public async Task<BacktestReport?> GetLatestReportAsync(string strategyName, string symbol)
     {
         const string sql = @"
-        SELECT id, strategy_name AS StrategyName, symbol AS Symbol, interval AS Interval, start_time AS StartTime, end_time AS EndTime, initial_capital AS InitialCapital, final_capital AS FinalCapital, total_trades AS TotalTrades, winning_trades AS WinningTrades, losing_trades AS LosingTrades, win_rate AS WinRate, max_drawdown_percent AS MaxDrawdownPercent, sharpe_ratio AS SharpeRatio, profit_factor AS ProfitFactor 
+        SELECT id, strategy_name AS StrategyName, symbol AS Symbol, interval AS Interval, start_time AS StartTime, end_time AS EndTime, initial_capital AS InitialCapital, final_capital AS FinalCapital, total_trades AS TotalTrades, winning_trades AS WinningTrades, losing_trades AS LosingTrades, win_rate AS WinRate, max_drawdown_percent AS MaxDrawdownPercent, sharpe_ratio AS SharpeRatio, profit_factor AS ProfitFactor, sortino_ratio AS SortinoRatio, calmar_ratio AS CalmarRatio 
         FROM backtest_runs 
         WHERE strategy_name = @StrategyName AND symbol = @Symbol
         ORDER BY executed_at DESC 

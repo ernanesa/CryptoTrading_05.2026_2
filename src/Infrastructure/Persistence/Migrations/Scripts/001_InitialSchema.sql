@@ -123,6 +123,8 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
     max_drawdown_percent NUMERIC(10, 4) NOT NULL,
     sharpe_ratio NUMERIC(10, 4) NOT NULL,
     profit_factor NUMERIC(10, 4) NOT NULL,
+    sortino_ratio NUMERIC(10, 4) DEFAULT 0,
+    calmar_ratio NUMERIC(10, 4) DEFAULT 0,
     executed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

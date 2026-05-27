@@ -320,6 +320,24 @@ app.MapGet("/api/backtest/run-multipair", async (
 .WithName("RunBacktestMultiPair");
 
 // 4. Paper Trading — Estado da carteira virtual
+
+// 5. Listar reports
+app.MapGet("/api/backtest/reports", async (IBacktestRepository backtestRepo, int limit = 50) =>
+{
+    var reports = await backtestRepo.GetReportsAsync(limit);
+    return Results.Ok(reports);
+})
+.WithName("GetBacktestReports")
+.WithOpenApi();
+
+app.MapGet("/api/backtest/reports/latest", async (IBacktestRepository backtestRepo, string strategy, string symbol) =>
+{
+    var report = await backtestRepo.GetLatestReportAsync(strategy, symbol);
+    return report != null ? Results.Ok(report) : Results.NotFound();
+})
+.WithName("GetLatestBacktestReport")
+.WithOpenApi();
+
 app.MapGet("/api/paper/wallet", async (IFeatureStore store) =>
 {
     var balances = await store.GetWalletBalancesAsync();

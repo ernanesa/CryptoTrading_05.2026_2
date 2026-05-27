@@ -92,17 +92,15 @@ public class PerformanceAnalyzer
                 if (downsideDev > 0)
                 {
                     // Sortino ratio
-                    // Not formally tracked in report yet, but can be added if BacktestReport has the property
-                    // report.SortinoRatio = ...
+                    report.SortinoRatio = (meanReturn / downsideDev) * (decimal)Math.Sqrt((double)returns.Count);
                 }
             }
         }
 
         // Calmar Ratio
-        // Typically Annualized Return / Max Drawdown
         if (report.MaxDrawdownPercent > 0)
         {
-            // report.CalmarRatio = report.TotalPnLPercent / report.MaxDrawdownPercent;
+            report.CalmarRatio = report.TotalPnLPercent / report.MaxDrawdownPercent;
         }
     }
 }

@@ -1,0 +1,10 @@
+1. Atualizar schema BD para sortino/calmar.
+2. Adicionar Sortino/Calmar no BacktestReport e PerformanceAnalyzer.
+3. Atualizar BacktestRepository com novas colunas.
+4. Criar JSON e Markdown exporter para reports.
+5. Criar WalkForwardEngine (treino/val/teste janela móvel).
+6. Ajustar FeeModel/SlippageModel para ficarem mais robustos.
+7. Criar dataset fixo de teste na pasta tests/TestData.
+8. Expôr Endpoints na API.
+9. Adicionar testes unitários/integrados cobrindo os cenários e garantir que mesmos inputs = mesmos outputs.
+10. Commit.
