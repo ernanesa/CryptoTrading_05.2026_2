@@ -85,6 +85,68 @@ public class AdaptiveOrchestrationTests
         Assert.Equal(0m, decision.PositionSize);
     }
 
+    [Fact]
+    public void FeedbackStateProjector_HeldDecision_PersistsIncrementedAdvantageCycles()
+    {
+        var projector = new AdaptiveFeedbackStateProjector();
+        var request = new AdaptiveOrchestrationRequest
+        {
+            PersistentAdvantageCycles = 1
+        };
+        var previous = new StrategyState
+        {
+            StrategyName = "RSI Mean Reversion",
+            Symbol = "BTCUSDT",
+            CooldownUntil = DateTime.UtcNow.AddMinutes(-10),
+            AdvantageCycles = 1
+        };
+        var decision = new AdaptiveOrchestrationDecision
+        {
+            Symbol = "BTCUSDT",
+            ActiveStrategyName = "RSI Mean Reversion",
+            CandidateStrategyName = "EMA Trend Following",
+            ShouldSwitchStrategy = false,
+            StrategyScore = 70m,
+            StrategyHealth = new StrategyHealthSnapshot { IsPaused = false },
+            StrategyScores = new List<StrategyScoreSnapshot>
+            {
+                new() { StrategyName = "EMA Trend Following", Score = 80m },
+                new() { StrategyName = "RSI Mean Reversion", Score = 70m }
+            }
+        };
+
+        var projected = projector.Project(request, decision, previous, DateTime.UtcNow);
+
+        Assert.Equal("RSI Mean Reversion", projected.StrategyName);
+        Assert.Equal(2, projected.AdvantageCycles);
+        Assert.Equal(previous.CooldownUntil, projected.CooldownUntil);
+        Assert.Equal(70m, projected.LastScore);
+    }
+
+    [Fact]
+    public void FeedbackStateProjector_SwitchDecision_ResetsAdvantageCyclesAndStoresSwitchTime()
+    {
+        var projector = new AdaptiveFeedbackStateProjector();
+        var now = DateTime.UtcNow;
+        var decision = new AdaptiveOrchestrationDecision
+        {
+            Symbol = "BTCUSDT",
+            ActiveStrategyName = "EMA Trend Following",
+            CandidateStrategyName = "EMA Trend Following",
+            ShouldSwitchStrategy = true,
+            StrategyScore = 83m,
+            StrategyHealth = new StrategyHealthSnapshot { IsPaused = true }
+        };
+
+        var projected = projector.Project(new AdaptiveOrchestrationRequest(), decision, null, now);
+
+        Assert.Equal("EMA Trend Following", projected.StrategyName);
+        Assert.Equal(0, projected.AdvantageCycles);
+        Assert.Equal(now, projected.CooldownUntil);
+        Assert.True(projected.IsPaused);
+        Assert.Equal(83m, projected.LastScore);
+    }
+
     private static AdaptiveOrchestrationRequest CreateRequest(IntelligenceSnapshot intelligence)
     {
         return new AdaptiveOrchestrationRequest

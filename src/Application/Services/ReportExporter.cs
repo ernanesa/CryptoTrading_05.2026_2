@@ -39,6 +39,26 @@ public static class ReportExporter
         sb.AppendLine($"- **Sortino Ratio:** {report.SortinoRatio:F2}");
         sb.AppendLine($"- **Calmar Ratio:** {report.CalmarRatio:F2}");
         sb.AppendLine();
+        sb.AppendLine("## Advanced Metrics");
+        sb.AppendLine($"- **Exposure Time:** {report.ExposureTimePercent:F2}%");
+        sb.AppendLine($"- **Average Holding Time:** {report.AvgHoldingTimeHours:F2} hours");
+        sb.AppendLine($"- **Max Consecutive Losses:** {report.MaxConsecutiveLosses}");
+        sb.AppendLine($"- **Fee Impact:** {report.FeeImpactPercent:F2}%");
+        sb.AppendLine($"- **Slippage Impact:** {report.SlippageImpactPercent:F2}%");
+        sb.AppendLine();
+        if (report.RegimeBreakdown.Count > 0)
+        {
+            sb.AppendLine("## Regime Performance");
+            sb.AppendLine("| Regime | Trades | Win Rate | PnL | Avg Return |");
+            sb.AppendLine("|---|---:|---:|---:|---:|");
+
+            foreach (var regime in report.RegimeBreakdown.Values.OrderBy(r => r.Regime))
+            {
+                sb.AppendLine($"| {regime.Regime} | {regime.Trades} | {regime.WinRate * 100:F2}% | {regime.PnL:F2} | {regime.AvgReturn:F2}% |");
+            }
+
+            sb.AppendLine();
+        }
         sb.AppendLine("## Trades");
         sb.AppendLine("| Entry Time | Exit Time | Type | Entry Price | Exit Price | Qty | PnL | Fees |");
         sb.AppendLine("|---|---|---|---|---|---|---|---|");

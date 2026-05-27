@@ -353,11 +353,12 @@ public class FeatureStore : IFeatureStore
     public async Task SaveTestnetOrderAsync(TestnetOrder order)
     {
         const string sql = @"
-        INSERT INTO testnet_orders (symbol, client_order_id, binance_order_id, side, type, price, quantity, status, created_at, updated_at) 
-        VALUES (@Symbol, @ClientOrderId, @BinanceOrderId, @Side, @Type, @Price, @Quantity, @Status, @CreatedAt, @UpdatedAt) 
-        ON CONFLICT (client_order_id) DO UPDATE 
-        SET binance_order_id = EXCLUDED.binance_order_id, 
-            status = EXCLUDED.status, 
+        INSERT INTO testnet_orders (symbol, client_order_id, binance_order_id, side, type, price, quantity, status, original_exchange_status, created_at, updated_at)
+        VALUES (@Symbol, @ClientOrderId, @BinanceOrderId, @Side, @Type, @Price, @Quantity, @Status, @OriginalExchangeStatus, @CreatedAt, @UpdatedAt)
+        ON CONFLICT (client_order_id) DO UPDATE
+        SET binance_order_id = EXCLUDED.binance_order_id,
+            status = EXCLUDED.status,
+            original_exchange_status = EXCLUDED.original_exchange_status,
             updated_at = EXCLUDED.updated_at;";
 
         await using var conn = await _dataSource.OpenConnectionAsync();
@@ -367,8 +368,8 @@ public class FeatureStore : IFeatureStore
     public async Task<TestnetOrder?> GetTestnetOrderAsync(string clientOrderId)
     {
         const string sql = @"
-        SELECT id, symbol, client_order_id AS ClientOrderId, binance_order_id AS BinanceOrderId, side, type, price, quantity, status, created_at AS CreatedAt, updated_at AS UpdatedAt 
-        FROM testnet_orders 
+        SELECT id, symbol, client_order_id AS ClientOrderId, binance_order_id AS BinanceOrderId, side, type, price, quantity, status, original_exchange_status AS OriginalExchangeStatus, created_at AS CreatedAt, updated_at AS UpdatedAt
+        FROM testnet_orders
         WHERE client_order_id = @ClientOrderId;";
 
         await using var conn = await _dataSource.OpenConnectionAsync();
@@ -378,9 +379,9 @@ public class FeatureStore : IFeatureStore
     public async Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync()
     {
         const string sql = @"
-        SELECT id, symbol, client_order_id AS ClientOrderId, binance_order_id AS BinanceOrderId, side, type, price, quantity, status, created_at AS CreatedAt, updated_at AS UpdatedAt 
-        FROM testnet_orders 
-        WHERE status IN ('NEW', 'PARTIALLY_FILLED');";
+        SELECT id, symbol, client_order_id AS ClientOrderId, binance_order_id AS BinanceOrderId, side, type, price, quantity, status, original_exchange_status AS OriginalExchangeStatus, created_at AS CreatedAt, updated_at AS UpdatedAt
+        FROM testnet_orders
+        WHERE status IN ('New', 'Accepted', 'PartiallyFilled', 'NEW', 'PARTIALLY_FILLED');";
 
         await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryAsync<TestnetOrder>(sql);

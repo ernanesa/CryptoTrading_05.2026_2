@@ -124,4 +124,48 @@ public class BacktestEngineTests
         Assert.True(report.FinalCapital > 0m);
         Assert.NotNull(report.Trades);
     }
+
+    [Fact]
+    public void ReportExporter_ToMarkdown_IncludesAdvancedMetricsAndRegimeBreakdown()
+    {
+        var report = new BacktestReport
+        {
+            StrategyName = "Test Strategy",
+            Symbol = "BTCUSDT",
+            Interval = "1h",
+            StartTime = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndTime = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+            InitialCapital = 10000m,
+            FinalCapital = 10150m,
+            TotalPnL = 150m,
+            TotalPnLPercent = 1.5m,
+            ExposureTimePercent = 62.5m,
+            AvgHoldingTimeHours = 3.25,
+            MaxConsecutiveLosses = 2,
+            FeeImpactPercent = 0.18m,
+            SlippageImpactPercent = 0.04m,
+            RegimeBreakdown = new Dictionary<string, RegimePerformance>
+            {
+                ["Trending"] = new()
+                {
+                    Regime = "Trending",
+                    Trades = 3,
+                    WinRate = 0.6667m,
+                    PnL = 150m,
+                    AvgReturn = 0.5m
+                }
+            }
+        };
+
+        var markdown = ReportExporter.ToMarkdown(report);
+
+        Assert.Contains("## Advanced Metrics", markdown);
+        Assert.Contains("- **Exposure Time:** 62.50%", markdown);
+        Assert.Contains("- **Average Holding Time:** 3.25 hours", markdown);
+        Assert.Contains("- **Max Consecutive Losses:** 2", markdown);
+        Assert.Contains("- **Fee Impact:** 0.18%", markdown);
+        Assert.Contains("- **Slippage Impact:** 0.04%", markdown);
+        Assert.Contains("## Regime Performance", markdown);
+        Assert.Contains("| Trending | 3 | 66.67% | 150.00 | 0.50% |", markdown);
+    }
 }

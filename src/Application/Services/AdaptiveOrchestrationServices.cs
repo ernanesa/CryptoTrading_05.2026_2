@@ -277,6 +277,37 @@ public class WalkForwardEvaluator
     }
 }
 
+public class AdaptiveFeedbackStateProjector
+{
+    public StrategyState Project(
+        AdaptiveOrchestrationRequest request,
+        AdaptiveOrchestrationDecision decision,
+        StrategyState? previousState,
+        DateTime nowUtc)
+    {
+        var hasCandidateAdvantage = !decision.CandidateStrategyName.Equals(decision.ActiveStrategyName, StringComparison.OrdinalIgnoreCase)
+            && decision.CandidateStrategyName.Length > 0
+            && decision.StrategyScores.FirstOrDefault(s => s.StrategyName.Equals(decision.CandidateStrategyName, StringComparison.OrdinalIgnoreCase))?.Score > decision.StrategyScore;
+
+        var advantageCycles = decision.ShouldSwitchStrategy
+            ? 0
+            : hasCandidateAdvantage
+                ? Math.Max(request.PersistentAdvantageCycles, previousState?.AdvantageCycles ?? 0) + 1
+                : 0;
+
+        return new StrategyState
+        {
+            StrategyName = decision.ActiveStrategyName,
+            Symbol = decision.Symbol,
+            IsPaused = decision.StrategyHealth.IsPaused,
+            CooldownUntil = decision.ShouldSwitchStrategy ? nowUtc : previousState?.CooldownUntil ?? request.LastSwitchAt,
+            LastScore = decision.StrategyScore,
+            AdvantageCycles = advantageCycles,
+            LastUpdated = nowUtc
+        };
+    }
+}
+
 public class AdaptiveStrategyOrchestrator
 {
     private static readonly TimeSpan SwitchCooldown = TimeSpan.FromMinutes(30);

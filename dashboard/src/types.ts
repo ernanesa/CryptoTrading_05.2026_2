@@ -67,6 +67,18 @@ export interface HardeningReport {
   alerts: string[];
 }
 
+export type RuntimeMode = 'Offline' | 'Simulation' | 'Paper' | 'TestnetDryRun' | 'TestnetReal';
+
+export interface RuntimeStatus {
+  mode: RuntimeMode;
+  isSimulation: boolean;
+  isPaper: boolean;
+  isTestnet: boolean;
+  isRealTestnet: boolean;
+  warnings: string[];
+  timestamp: string;
+}
+
 export interface TradeLog {
   time: string;
   type: string;

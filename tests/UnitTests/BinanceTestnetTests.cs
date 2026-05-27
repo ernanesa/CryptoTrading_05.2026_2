@@ -77,7 +77,7 @@ public class BinanceTestnetTests
 
         public Task<TestnetOrder?> GetTestnetOrderAsync(string clientOrderId) => Task.FromResult(Orders.FirstOrDefault(o => o.ClientOrderId == clientOrderId));
 
-        public Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync() => Task.FromResult<IEnumerable<TestnetOrder>>(Orders.Where(o => o.Status == "NEW" || o.Status == "PARTIALLY_FILLED"));
+        public Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync() => Task.FromResult<IEnumerable<TestnetOrder>>(Orders.Where(o => o.Status is "New" or "PartiallyFilled" or "NEW" or "PARTIALLY_FILLED"));
 
         public Task SaveTestnetAuditLogAsync(TestnetAuditLog log)
         {
@@ -151,7 +151,8 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, risk);
 
-        Assert.Equal("FILLED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Filled.ToString(), result.Status);
+        Assert.Equal("DRY_RUN_SIMULATED_FILL", result.OriginalExchangeStatus);
         Assert.StartsWith("MOCK_BINANCE_", result.BinanceOrderId);
         Assert.Contains(store.Logs, l => l.Action == "DRY_RUN_EXECUTION" && l.Status == "SUCCESS");
     }
@@ -174,7 +175,7 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, risk);
 
-        Assert.Equal("REJECTED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Rejected.ToString(), result.Status);
         Assert.Contains(store.Logs, l => l.Action == "VALIDATION_FAILED" && l.Status == "FAILED");
     }
 
@@ -207,7 +208,7 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, risk);
 
-        Assert.Equal("REJECTED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Rejected.ToString(), result.Status);
         
         var failureLog = store.Logs.FirstOrDefault(l => l.Action == "BINANCE_TESTNET_FAILED");
         Assert.NotNull(failureLog);
@@ -231,7 +232,7 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, null);
 
-        Assert.Equal("REJECTED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Rejected.ToString(), result.Status);
         Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_MISSING" && l.Status == "FAILED");
     }
 
@@ -252,7 +253,7 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, risk);
 
-        Assert.Equal("REJECTED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Rejected.ToString(), result.Status);
         Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_REJECTED" && l.Status == "FAILED");
     }
 
@@ -273,7 +274,7 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, risk);
 
-        Assert.Equal("REJECTED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Rejected.ToString(), result.Status);
         Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_EXPIRED" && l.Status == "FAILED");
     }
 
@@ -294,7 +295,7 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, risk);
 
-        Assert.Equal("REJECTED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Rejected.ToString(), result.Status);
         Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_MISMATCH" && l.Status == "FAILED");
     }
     
@@ -317,7 +318,7 @@ public class BinanceTestnetTests
 
         var result = await executor.ExecuteOrderAsync(order, risk);
 
-        Assert.Equal("FILLED", result.Status);
+        Assert.Equal(TestnetOrderStatus.Filled.ToString(), result.Status);
     }
 
     [Fact]
@@ -331,13 +332,36 @@ public class BinanceTestnetTests
 
         var sync = new OrderStatusSynchronizer(store, config);
         
-        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_3", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m, Status = "NEW" };
+        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_3", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m, Status = TestnetOrderStatus.New.ToString() };
         await store.SaveTestnetOrderAsync(order);
 
         int updated = await sync.SynchronizeActiveOrdersAsync();
 
         Assert.Equal(1, updated);
         var syncedOrder = await store.GetTestnetOrderAsync("ORDER_3");
-        Assert.Equal("FILLED", syncedOrder?.Status);
+        Assert.Equal(TestnetOrderStatus.Filled.ToString(), syncedOrder?.Status);
+        Assert.Equal("DRY_RUN_SIMULATED_FILL", syncedOrder?.OriginalExchangeStatus);
+    }
+
+    [Fact]
+    public async Task SynchronizeActiveOrders_RealModeMissingBinanceId_DoesNotAssumeFilled()
+    {
+        var store = new InMemoryFeatureStore();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            { "Binance:Testnet:Enabled", "true" }
+        }).Build();
+
+        var sync = new OrderStatusSynchronizer(store, config);
+
+        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_REAL_SYNC", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m, Status = TestnetOrderStatus.New.ToString() };
+        await store.SaveTestnetOrderAsync(order);
+
+        int updated = await sync.SynchronizeActiveOrdersAsync();
+
+        Assert.Equal(0, updated);
+        var syncedOrder = await store.GetTestnetOrderAsync("ORDER_REAL_SYNC");
+        Assert.Equal(TestnetOrderStatus.New.ToString(), syncedOrder?.Status);
+        Assert.Contains(store.Logs, l => l.Action == "SYNC_ORDER_BINANCE_SKIPPED" && l.Status == "FAILED");
     }
 }

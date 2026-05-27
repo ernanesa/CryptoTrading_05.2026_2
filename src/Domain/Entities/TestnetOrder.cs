@@ -10,7 +10,8 @@ public class TestnetOrder
     public string Type { get; set; } = string.Empty; // LIMIT, MARKET
     public decimal Price { get; set; }
     public decimal Quantity { get; set; }
-    public string Status { get; set; } = "NEW";     // NEW, FILLED, CANCELED, REJECTED
+    public string Status { get; set; } = "New";
+    public string? OriginalExchangeStatus { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

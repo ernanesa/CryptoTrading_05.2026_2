@@ -1,4 +1,4 @@
-import type { MetricsSnapshot, IntelligenceSnapshot, AdaptiveRecommendation, HardeningReport } from './types';
+import type { MetricsSnapshot, IntelligenceSnapshot, AdaptiveRecommendation, HardeningReport, RuntimeStatus } from './types';
 
 const API_BASE_URL = 'http://localhost:5020';
 
@@ -21,6 +21,11 @@ export const apiService = {
   fetchHardening: async (): Promise<HardeningReport> => {
     const res = await fetch(`${API_BASE_URL}/api/hardening/report`);
     if (!res.ok) throw new Error('Failed to fetch hardening report');
+    return res.json();
+  },
+  fetchRuntimeStatus: async (): Promise<RuntimeStatus> => {
+    const res = await fetch(`${API_BASE_URL}/api/runtime/status`);
+    if (!res.ok) throw new Error('Failed to fetch runtime status');
     return res.json();
   }
 };

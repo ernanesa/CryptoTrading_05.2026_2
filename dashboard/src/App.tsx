@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from './store';
+import { apiService } from './services';
 
 import * as signalR from '@microsoft/signalr';
 import { 
@@ -176,6 +177,18 @@ interface HardeningReport {
   alerts: string[];
 }
 
+type RuntimeMode = 'Offline' | 'Simulation' | 'Paper' | 'TestnetDryRun' | 'TestnetReal';
+
+interface RuntimeStatus {
+  mode: RuntimeMode;
+  isSimulation: boolean;
+  isPaper: boolean;
+  isTestnet: boolean;
+  isRealTestnet: boolean;
+  warnings: string[];
+  timestamp: string;
+}
+
 interface TradeLog {
   time: string;
   type: string;
@@ -197,7 +210,15 @@ interface AuditLog {
 export default function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'market' | 'backtest' | 'paper' | 'risk' | 'testnet' | 'logs'>('overview');
   const { isConnected, setIsConnected, setMode } = useAppStore();
-  useEffect(() => { setMode(isConnected ? 'Testnet Real' : 'Simulation'); }, [isConnected]);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>({
+    mode: 'Simulation',
+    isSimulation: true,
+    isPaper: false,
+    isTestnet: false,
+    isRealTestnet: false,
+    warnings: [],
+    timestamp: new Date().toISOString()
+  });
   const [metrics, setMetrics] = useState<MetricsSnapshot>({
     uptimeSeconds: 0,
     candlesReceived: 0,
@@ -463,10 +484,32 @@ export default function App() {
       }
     };
 
+    const fetchRuntimeStatus = async () => {
+      try {
+        const data = await apiService.fetchRuntimeStatus();
+        setRuntimeStatus(data);
+        syncRuntimeStoreMode(data.mode);
+      } catch (err) {
+        const fallback: RuntimeStatus = {
+          mode: 'Simulation',
+          isSimulation: true,
+          isPaper: false,
+          isTestnet: false,
+          isRealTestnet: false,
+          warnings: ['Runtime status API unavailable. Dashboard using seeded Simulation fallback.'],
+          timestamp: new Date().toISOString()
+        };
+        setRuntimeStatus(fallback);
+        syncRuntimeStoreMode(fallback.mode);
+      }
+    };
+
+    fetchRuntimeStatus();
     fetchMetrics();
     fetchIntelligence();
     fetchAdaptive();
     fetchHardening();
+    const runtimeIntervalId = window.setInterval(fetchRuntimeStatus, 10000);
     const intervalId = window.setInterval(fetchMetrics, 3000);
     const intelligenceIntervalId = window.setInterval(fetchIntelligence, 10000);
     const adaptiveIntervalId = window.setInterval(fetchAdaptive, 10000);
@@ -495,6 +538,7 @@ export default function App() {
 
     return () => {
       connection.stop();
+      window.clearInterval(runtimeIntervalId);
       window.clearInterval(intervalId);
       window.clearInterval(intelligenceIntervalId);
       window.clearInterval(adaptiveIntervalId);
@@ -573,6 +617,33 @@ export default function App() {
     if (status.toLowerCase().includes('mandatory')) return 'success';
     if (status.toLowerCase().includes('opt-in')) return 'warning';
     return 'info';
+  };
+
+  const runtimeModeLabel = (mode: RuntimeMode) => {
+    if (mode === 'TestnetDryRun') return 'Testnet Dry-run';
+    if (mode === 'TestnetReal') return 'Testnet Real';
+    return mode;
+  };
+
+  const runtimeModeBadgeClass = (mode: RuntimeMode) => {
+    if (mode === 'TestnetReal') return 'danger';
+    if (mode === 'TestnetDryRun' || mode === 'Paper') return 'warning';
+    if (mode === 'Simulation') return 'success';
+    return 'info';
+  };
+
+  const syncRuntimeStoreMode = (mode: RuntimeMode) => {
+    if (mode === 'TestnetDryRun') {
+      setMode('Testnet Dry-run');
+      return;
+    }
+
+    if (mode === 'TestnetReal') {
+      setMode('Testnet Real');
+      return;
+    }
+
+    setMode(mode);
   };
 
   const triggerHalt = () => {
@@ -784,7 +855,7 @@ export default function App() {
         <div className="sidebar-footer">
           <div className="system-status">
             <span className={`status-dot ${isConnected ? 'active' : ''}`} style={{ backgroundColor: isConnected ? '#00e676' : '#ffb300', boxShadow: isConnected ? '0 0 10px #00e676' : '0 0 10px #ffb300' }}></span>
-            <span>{isConnected ? 'API Real-Time Conectada' : 'Simulation Mode'}</span>
+            <span>{isConnected ? 'API Real-Time Conectada' : `${runtimeModeLabel(runtimeStatus.mode)} Mode`}</span>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
             v10.0 Native-AOT
@@ -819,6 +890,9 @@ export default function App() {
           </div>
 
           <div className="header-actions">
+            <span className={`badge ${runtimeModeBadgeClass(runtimeStatus.mode)}`} title={runtimeStatus.warnings.join(' ') || `RuntimeMode ${runtimeStatus.mode}`}>
+              Runtime: {runtimeModeLabel(runtimeStatus.mode)}
+            </span>
             <button className="refresh-btn" onClick={() => addLog('Forçando recarregamento das métricas.')}>
               <RefreshCw size={14} />
               <span>Sincronizar</span>

@@ -5,6 +5,7 @@ using Binance.Net.Enums;
 using CryptoExchange.Net.Authentication;
 using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
+using CryptoTrading.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -72,7 +73,7 @@ public class BinanceTestnetExecutor
         // 2. Strict Risk Decision Gate
         if (riskDecision == null)
         {
-            order.Status = "REJECTED";
+            order.Status = TestnetOrderStatus.Rejected.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
 
@@ -88,7 +89,7 @@ public class BinanceTestnetExecutor
 
         if (!riskDecision.Decision.Equals("APPROVED", StringComparison.OrdinalIgnoreCase))
         {
-            order.Status = "REJECTED";
+            order.Status = TestnetOrderStatus.Rejected.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
 
@@ -104,7 +105,7 @@ public class BinanceTestnetExecutor
 
         if (riskDecision.ExpiresAt < DateTime.UtcNow)
         {
-            order.Status = "REJECTED";
+            order.Status = TestnetOrderStatus.Rejected.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
 
@@ -121,7 +122,7 @@ public class BinanceTestnetExecutor
         if (!riskDecision.Symbol.Equals(order.Symbol, StringComparison.OrdinalIgnoreCase) || 
             !riskDecision.OrderSide.Equals(order.Side, StringComparison.OrdinalIgnoreCase))
         {
-            order.Status = "REJECTED";
+            order.Status = TestnetOrderStatus.Rejected.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
 
@@ -158,7 +159,7 @@ public class BinanceTestnetExecutor
             else
             {
                 // No modo real, rejeitamos se os filtros nao existirem para garantir total seguranca
-                order.Status = "REJECTED";
+                order.Status = TestnetOrderStatus.Rejected.ToString();
                 order.UpdatedAt = DateTime.UtcNow;
                 await _store.SaveTestnetOrderAsync(order);
 
@@ -177,7 +178,7 @@ public class BinanceTestnetExecutor
         var validation = _validator.ValidateOrder(order, filters);
         if (!validation.IsValid)
         {
-            order.Status = "REJECTED";
+            order.Status = TestnetOrderStatus.Rejected.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
 
@@ -195,7 +196,8 @@ public class BinanceTestnetExecutor
         // 5. Fluxo Simulado / Dry-Run (se Testnet estiver desabilitada)
         if (!_isEnabled)
         {
-            order.Status = "FILLED"; // Em simulação de dry-run assume preenchimento instantâneo
+            order.Status = TestnetOrderStatus.Filled.ToString(); // Em simulação de dry-run assume preenchimento instantâneo
+            order.OriginalExchangeStatus = "DRY_RUN_SIMULATED_FILL";
             order.BinanceOrderId = $"MOCK_BINANCE_{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
@@ -242,8 +244,9 @@ public class BinanceTestnetExecutor
             }
 
             // Real Testnet mode: NEVER assume FILLED. We check returned status or query via Sync/GetOrderStatus
-            var statusStr = result.Data.Status.ToString().ToUpper();
-            order.Status = statusStr == "NEW" ? "NEW" : (statusStr == "FILLED" ? "FILLED" : (statusStr == "PARTIALLY_FILLED" ? "PARTIALLY_FILLED" : "REJECTED"));
+            var statusStr = result.Data.Status.ToString();
+            order.Status = MapExchangeStatus(statusStr).ToString();
+            order.OriginalExchangeStatus = statusStr;
             order.BinanceOrderId = result.Data.Id.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
@@ -258,7 +261,7 @@ public class BinanceTestnetExecutor
         }
         catch (Exception ex)
         {
-            order.Status = "REJECTED";
+            order.Status = TestnetOrderStatus.Rejected.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
 
@@ -290,7 +293,8 @@ public class BinanceTestnetExecutor
         {
             Symbol = result.Data.Symbol,
             BinanceOrderId = result.Data.Id.ToString(),
-            Status = result.Data.Status.ToString().ToUpper(),
+            Status = MapExchangeStatus(result.Data.Status.ToString()).ToString(),
+            OriginalExchangeStatus = result.Data.Status.ToString(),
             Price = result.Data.Price,
             Quantity = result.Data.Quantity,
             Side = result.Data.Side.ToString().ToUpper(),
@@ -331,5 +335,25 @@ public class BinanceTestnetExecutor
             Locked = b.Locked,
             UpdatedAt = DateTime.UtcNow
         });
+    }
+
+    public static TestnetOrderStatus MapExchangeStatus(string? exchangeStatus)
+    {
+        var normalized = (exchangeStatus ?? string.Empty)
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Trim();
+
+        return normalized.ToUpperInvariant() switch
+        {
+            "NEW" => TestnetOrderStatus.New,
+            "ACCEPTED" => TestnetOrderStatus.Accepted,
+            "PARTIALLYFILLED" => TestnetOrderStatus.PartiallyFilled,
+            "FILLED" => TestnetOrderStatus.Filled,
+            "CANCELED" or "CANCELLED" => TestnetOrderStatus.Canceled,
+            "REJECTED" => TestnetOrderStatus.Rejected,
+            "EXPIRED" => TestnetOrderStatus.Expired,
+            _ => TestnetOrderStatus.Unknown
+        };
     }
 }

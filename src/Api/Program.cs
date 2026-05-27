@@ -56,6 +56,7 @@ builder.Services.AddSingleton<DynamicPositionSizingService>();
 builder.Services.AddSingleton<DynamicExitEngine>();
 builder.Services.AddSingleton<TradeAttributionService>();
 builder.Services.AddSingleton<WalkForwardEvaluator>();
+builder.Services.AddSingleton<AdaptiveFeedbackStateProjector>();
 builder.Services.AddSingleton<AdaptiveStrategyOrchestrator>();
 builder.Services.AddSingleton<DatasetBuilderService>();
 builder.Services.AddSingleton<ModelDriftMonitor>();
@@ -465,14 +466,20 @@ app.MapGet("/api/testnet/filters/{symbol}", async (string symbol, IFeatureStore 
 .WithName("GetExchangeFilters");
 
 // 11. Binance Testnet — Enviar uma ordem de trade em sandbox (ou real se habilitado)
-app.MapPost("/api/testnet/order", async (TestnetOrder order, BinanceTestnetExecutor executor) =>
+app.MapPost("/api/testnet/order", async (TestnetOrderSubmission request, BinanceTestnetExecutor executor) =>
 {
+    if (request.Order == null)
+    {
+        return Results.BadRequest(new { Message = "Payload invalido: informe order e riskDecision." });
+    }
+
+    var order = request.Order;
     order.ClientOrderId = $"CLIENT_{Guid.NewGuid().ToString().Substring(0, 10).ToUpper()}";
     order.CreatedAt = DateTime.UtcNow;
     order.UpdatedAt = DateTime.UtcNow;
 
-    var result = await executor.ExecuteOrderAsync(order);
-    return result.Status == "REJECTED"
+    var result = await executor.ExecuteOrderAsync(order, request.RiskDecision);
+    return result.Status == TestnetOrderStatus.Rejected.ToString()
         ? Results.BadRequest(new { Message = "Ordem rejeitada.", Result = result })
         : Results.Ok(result);
 })
@@ -497,7 +504,7 @@ app.MapGet("/api/testnet/audits", async (IFeatureStore store, int limit = 100) =
 
 
 // 14. Adaptive Orchestration API
-app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest request, AdaptiveStrategyOrchestrator orchestrator, IFeatureStore store) =>
+app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest request, AdaptiveStrategyOrchestrator orchestrator, AdaptiveFeedbackStateProjector feedbackState, IFeatureStore store) =>
 {
     // Load real metrics
     foreach (var strategy in request.StrategyNames)
@@ -516,18 +523,8 @@ app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest req
 
     var decision = orchestrator.Decide(request);
 
-    // Save updated state
-    if (decision.ShouldSwitchStrategy)
-    {
-        await store.SaveStrategyStateAsync(new StrategyState
-        {
-            StrategyName = decision.CandidateStrategyName,
-            Symbol = decision.Symbol,
-            CooldownUntil = DateTime.UtcNow,
-            AdvantageCycles = 0,
-            LastUpdated = DateTime.UtcNow
-        });
-    }
+    // Persist adaptive feedback after every decision so hysteresis, pauses and scores survive restarts.
+    await store.SaveStrategyStateAsync(feedbackState.Project(request, decision, state, DateTime.UtcNow));
 
     return Results.Ok(new
     {
@@ -540,3 +537,5 @@ app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest req
 })
 .WithName("AdaptiveOrchestrationDecide");
 app.Run();
+
+public record TestnetOrderSubmission(TestnetOrder Order, RiskDecision? RiskDecision);

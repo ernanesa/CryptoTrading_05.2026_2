@@ -44,11 +44,15 @@ Para realizar pesquisas semânticas sobre o planejamento e a arquitetura do proj
 dotnet run --project tools/CryptoTrading.RagTool -- query "regras de risco do RiskEngine"
 ```
 
-### Passo 2.4: Otimização de Prompts para Agentes de IA (Optimize)
+### Passo 2.4: Otimização de Prompts para Agentes de IA
 Para gerar prompts altamente contextualizados e instruídos com as regras técnicas e documentos do projeto, facilitando a programação por agentes de IA:
 ```bash
-dotnet run --project tools/CryptoTrading.RagTool -- optimize "implementar novo indicador de volume na feature store"
+dotnet run --project tools/CryptoTrading.RagTool -- context-pack "implementar novo indicador de volume na feature store"
+dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "implementar novo indicador de volume na feature store" --profile antigravity
+dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "implementar novo indicador de volume na feature store" --profile copilot
 ```
+
+Perfis disponíveis: `antigravity`, `copilot`, `code-review`, `integration`.
 
 ---
 

@@ -10,7 +10,7 @@ Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 | M1 Market Data + Feature Store | 100% | Functional Prototype |
 | M2 Backtesting + Strategy Lab | 100% | Functional Prototype |
 | M3 Paper Trading + Risk | 100% | Functional Prototype |
-| M4 Binance Spot Testnet | 100% | Completed |
+| M4 Binance Spot Testnet | 100% | Functional Prototype (Strict RiskDecision gate implemented; REST bridge pending) |
 | M5 Dashboard + Observability | 100% | Functional Prototype |
 | M6 Intelligence Layer | 100% | Heuristic Prototype |
 | M7 Adaptive Strategy Orchestration | 100% | Heuristic Prototype |
@@ -372,4 +372,22 @@ RAG consultado: sim
 Consulta: hardening gates CI dotnet dashboard testcontainers playwright native aot secret scanning dependabot release readiness report plans 26 hardening report risks known
 Contexto encontrado: separar CI workflow em mandatório e opt-in; adicionar dependabot e criar doc final de release readiness.
 Impacto: CI consolidado e mais veloz, mantendo features avançadas acessíveis de forma sob demanda. Segurança aprimorada.
+Data: 2026-05-27
+
+## Task A — Revalidacao M9 e plano final
+
+- [x] data atual verificada: 2026-05-27 / America/Maceio;
+- [x] RAG local consultado com `context-pack` e `optimize-input`;
+- [x] README, M9, plano paralelo, hardening report, release readiness, master checklist e changelog revisados;
+- [x] codigo citado no prompt A conferido sem alteracao: `BinanceTestnetExecutor`, `RuntimeStatusService`, `RuntimeMode`, `HardeningReportService`, endpoints REST, testes Binance Testnet e dashboard;
+- [x] documentacao M9 ajustada para refletir estado real do fluxo Testnet/RuntimeMode;
+- [x] nenhum arquivo de codigo alterado;
+- [x] validacao definida: `git diff --check`.
+
+### Registro da revalidacao M9 Task A
+
+RAG consultado: sim
+Consulta: M9 reality check Binance RiskDecision RuntimeMode RAG context-pack release readiness; Atualizar M9 com estado real do projeto
+Contexto encontrado: foco em Binance Testnet com barreira `RiskDecision`, `RuntimeMode`, hardening/release readiness e protocolo RAG local.
+Impacto: M9 deixou explicito que o executor Testnet possui gate estrito concluido, mas a rota REST ainda precisa receber `RiskDecision`; o RuntimeMode existe no backend, porem o dashboard ainda precisa consumir `/api/runtime/status` como fonte canonica.
 Data: 2026-05-27

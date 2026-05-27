@@ -38,6 +38,7 @@ public class IntelligenceSnapshotServiceTests
         Assert.Equal("rag-context-provider-m6-v1", snapshot.RagContext.ProviderVersion);
         Assert.Equal("explanation-heuristic-m6-v1", snapshot.Explanation.ModelVersion);
         Assert.NotEmpty(snapshot.RegisteredModels);
+        Assert.All(snapshot.RegisteredModels, model => Assert.True(model.IsShadowMode));
         Assert.Equal("TrendingUp", snapshot.MarketRegime);
         Assert.True(snapshot.RegimeConfidence > 0m);
         Assert.True(snapshot.VolatilityForecast.HorizonMinutes > 0);
@@ -103,6 +104,47 @@ public class IntelligenceSnapshotServiceTests
             _service.CreateSnapshot("BTCUSDT", "1m", Array.Empty<CandleFeature>()));
 
         Assert.Equal("features", ex.ParamName);
+    }
+
+    [Fact]
+    public void ModelRegistry_MissingRegistryFile_PersistsShadowModeDefaults()
+    {
+        var registryPath = Path.Combine(Path.GetTempPath(), $"model-registry-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            var registry = new ModelRegistry(registryPath);
+            var models = registry.GetRegisteredModels();
+
+            Assert.True(File.Exists(registryPath));
+            Assert.Contains(models, model => model.Name == "VolatilityForecastService");
+            Assert.All(models, model =>
+            {
+                Assert.True(model.IsShadowMode);
+                Assert.True(model.IsActive);
+                Assert.False(string.IsNullOrWhiteSpace(model.Version));
+            });
+
+            var reloadedModels = new ModelRegistry(registryPath).GetRegisteredModels();
+
+            Assert.Equal(models.Count, reloadedModels.Count);
+            Assert.Contains(reloadedModels, model => model.Name == "VolatilityForecastService");
+            Assert.All(reloadedModels, model => Assert.True(model.IsShadowMode));
+
+            reloadedModels[0].IsShadowMode = false;
+            File.WriteAllText(registryPath, System.Text.Json.JsonSerializer.Serialize(reloadedModels));
+
+            var normalizedModels = new ModelRegistry(registryPath).GetRegisteredModels();
+
+            Assert.All(normalizedModels, model => Assert.True(model.IsShadowMode));
+        }
+        finally
+        {
+            if (File.Exists(registryPath))
+            {
+                File.Delete(registryPath);
+            }
+        }
     }
 
     private static List<CandleFeature> CreateFeatures(

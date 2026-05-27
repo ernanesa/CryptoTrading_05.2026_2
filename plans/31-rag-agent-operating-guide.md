@@ -38,6 +38,21 @@ Generate highly structured prompts enriched with local code locations, architect
 dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "Strict Binance Spot Testnet validation"
 ```
 
+Profiles are supported:
+```bash
+dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "Strict Binance Spot Testnet validation" --profile antigravity
+dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "Paper order state machine" --profile copilot
+dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "Review testnet lifecycle diff" --profile code-review
+dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "Final MVP integration" --profile integration
+```
+
+Saved prompt wrappers live in `plans/prompts/`:
+
+- `antigravity-agent.md`
+- `copilot-agent.md`
+- `code-review-agent.md`
+- `integration-agent.md`
+
 ## Collection Structure
 
 The tool splits files into four discrete Qdrant collections:
@@ -49,3 +64,5 @@ The tool splits files into four discrete Qdrant collections:
 ## Strict Rules
 - Always redact sensitive API keys or connection strings using the `SecretRedactor` before indexing code comments.
 - Do not index temporary `obj/`, `bin/`, or `.gemini/` directories.
+- Before complex implementation, run both `context-pack` and `optimize-input`.
+- After large changes in `plans/` or `src/`, run `refresh` so agent context does not drift.

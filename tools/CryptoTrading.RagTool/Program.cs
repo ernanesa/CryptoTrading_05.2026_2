@@ -51,10 +51,10 @@ public static class Program
                     if (args.Length < 2)
                     {
                         Console.WriteLine("Erro: Defina o objetivo/pedido.");
-                        Console.WriteLine("Uso: dotnet run --project tools/CryptoTrading.RagTool -- optimize-input \"<seu pedido>\"");
+                        Console.WriteLine("Uso: dotnet run --project tools/CryptoTrading.RagTool -- optimize-input \"<seu pedido>\" [--profile antigravity|copilot|code-review|integration]");
                         return 1;
                     }
-                    await RunOptimizeInputAsync(args[1]);
+                    await RunOptimizeInputAsync(args[1], GetOption(args, "--profile") ?? "antigravity");
                     break;
                     
                 case "context-pack":
@@ -94,9 +94,24 @@ public static class Program
         Console.WriteLine("  ingest                  Lê todos os planos e indexa no Qdrant.");
         Console.WriteLine("  refresh                 Recria docs/código no Qdrant e executa ingestão limpa.");
         Console.WriteLine("  query \"<pergunta>\"      Realiza busca semântica por documentos relevantes.");
-        Console.WriteLine("  optimize-input \"<pedido>\" Gera um prompt completo e estruturado para agentes de IA.");
+        Console.WriteLine("  optimize-input \"<pedido>\" [--profile <perfil>] Gera prompt estruturado para agentes.");
         Console.WriteLine("  context-pack \"<pedido>\"   Retorna apenas o contexto agrupado.");
+        Console.WriteLine("\nPerfis optimize-input:");
+        Console.WriteLine("  antigravity | copilot | code-review | integration");
         Console.WriteLine("============================================================\n");
+    }
+
+    private static string? GetOption(string[] args, string optionName)
+    {
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i].Equals(optionName, StringComparison.OrdinalIgnoreCase))
+            {
+                return args[i + 1];
+            }
+        }
+
+        return null;
     }
 
     private static string GetRepositoryRoot()
@@ -300,6 +315,11 @@ public static class Program
         Console.WriteLine($"\n=== CONTEXT PACK PARA: \"{rawInput}\" ===");
         var collectionsDict = await BuildContextCollectionsPackAsync(rawInput);
 
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n>>> OBJETIVO <<<");
+        Console.ResetColor();
+        Console.WriteLine(rawInput);
+
         foreach (var pair in collectionsDict)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -324,9 +344,49 @@ public static class Program
                 Console.ResetColor();
             }
         }
+
+        var probableFiles = ExtractProbableFiles(collectionsDict);
+        var sources = ExtractSources(collectionsDict);
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n>>> FONTES RECUPERADAS <<<");
+        Console.ResetColor();
+        Console.WriteLine(sources.Count == 0 ? "- Nenhuma fonte encontrada." : string.Join("\n", sources.Select(s => $"- {s}")));
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n>>> ARQUIVOS PROVÁVEIS <<<");
+        Console.ResetColor();
+        Console.WriteLine(probableFiles.Count == 0 ? "- Consultar docs/planos relacionados antes de editar." : string.Join("\n", probableFiles.Select(f => $"- {f}")));
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n>>> RISCOS <<<");
+        Console.ResetColor();
+        Console.WriteLine("- Não bypassar RiskEngine/RiskDecision/DecisionAudit em fluxos operacionais.");
+        Console.WriteLine("- Não mascarar dados simulados como reais; explicitar Simulation, Paper, TestnetDryRun ou TestnetReal.");
+        Console.WriteLine("- Não versionar secrets nem emitir API keys em logs, auditorias ou prompts.");
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n>>> TESTES SUGERIDOS <<<");
+        Console.ResetColor();
+        Console.WriteLine("- dotnet test -c Release");
+        Console.WriteLine("- git diff --check");
+        Console.WriteLine("- cd dashboard && npm run build, quando houver mudança no dashboard.");
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n>>> CRITÉRIOS <<<");
+        Console.ResetColor();
+        Console.WriteLine("- Implementar a menor entrega validável.");
+        Console.WriteLine("- Atualizar docs/checklists quando mudar comportamento ou maturidade.");
+        Console.WriteLine("- Manter heavy gates como opt-in quando dependerem de Docker, exchange real ou browsers.");
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n>>> DEPENDÊNCIAS <<<");
+        Console.ResetColor();
+        Console.WriteLine("- Qdrant local e embeddings precisam estar atualizados para máxima precisão.");
+        Console.WriteLine("- Rode refresh após mudanças grandes em plans/ ou src/.");
     }
 
-    private static async Task RunOptimizeInputAsync(string rawInput)
+    private static async Task RunOptimizeInputAsync(string rawInput, string profile)
     {
         var collectionsDict = await BuildContextCollectionsPackAsync(rawInput);
 
@@ -335,26 +395,23 @@ public static class Program
         var tasksContext = FormatCollectionContext(collectionsDict.GetValueOrDefault("cryptotrading_tasks"));
         var codeContext = FormatCollectionContext(collectionsDict.GetValueOrDefault("cryptotrading_code"));
 
-        var probableFiles = new HashSet<string>();
-        if (collectionsDict.TryGetValue("cryptotrading_code", out var codePoints))
-        {
-            foreach (var cp in codePoints)
-            {
-                if (cp.Payload.TryGetValue("source", out var sVal))
-                {
-                    probableFiles.Add(sVal.StringValue);
-                }
-            }
-        }
+        var probableFiles = ExtractProbableFiles(collectionsDict);
 
-        var filesStr = probableFiles.Count > 0 
-            ? string.Join("\n- ", probableFiles.Select(f => $"[{Path.GetFileName(f)}](file://{f})")) 
+        var filesStr = probableFiles.Count > 0
+            ? string.Join("\n- ", probableFiles.Select(f => $"[{Path.GetFileName(f)}](file://{f})"))
             : "[Nenhum arquivo identificado de forma especifica; consulte a colecao de codigo]";
+        var profileSpec = BuildProfileSpec(profile);
 
         var promptTemplate = $@"Você é um agente de desenvolvimento especialista trabalhando no repositório `ernanesa/CryptoTrading_05.2026_2`.
 
 ## OBJETIVO DO PEDIDO
 {rawInput}
+
+## PERFIL SELECIONADO
+{profileSpec.Name}
+
+## POSTURA DO AGENTE
+{profileSpec.Guidance}
 
 ## CONTEXTO E DOCUMENTAÇÃO RECUPERADA (RAG)
 ### Documentos e Guias de Estágios:
@@ -383,29 +440,14 @@ public static class Program
 - Build íntegro em release (`dotnet test -c Release`).
 - Execução com tempo de latência de CPU reduzido e livre de Memory Leaks.
 
----
+## ENTREGÁVEIS ESPERADOS
+{profileSpec.Deliverables}
 
-## PERFIS DE COMPORTAMENTO RECOMENDADOS
-
-### PERFIL A: ANTIGRAVITY (Agente Autônomo Chefe)
-> [!NOTE]
-> Foco em auditoria rigorosa de todas as ramificações de risco, integração do dashboard, robustez matemática das heurísticas adaptativas e plano de liberação (Release Readiness).
-> Postura: Altamente estratégico, audita as restrições e re-planeja cenários de caos.
-
-### PERFIL B: GITHUB COPILOT / CODE-ASSISTANT (Desenvolvedor de Componentes)
-> [!TIP]
-> Foco em gerar implementações limpas de algoritmos específicos, queries SQL Dapper e testes unitários parametrizados.
-> Postura: Foco em sintaxe perfeita, conformidade com C# 14 e geração rápida de arquivos de teste.
-
-### PERFIL C: BRANCH WORKER (Agente Focado em Sub-tarefa)
-> [!IMPORTANT]
-> Foco no escopo ultra-específico da branch indicada. Não deve desviar para refatorações alheias.
-> Postura: Assertividade cirúrgica, resolve estritamente os critérios de aceitação e reporta progresso ao task.md.
-
-### PERFIL D: CODE REVIEWER (Auditor de Pull Request)
-> [!CAUTION]
-> Foco em conformidade regulatória interna, segurança de credenciais, cobertura de cenários negativos e legibilidade.
-> Postura: Cético, busca pontos falhos, vulnerabilidades de concorrência ou bypass nos limites de alocação de capital.
+## PLANO MÍNIMO ANTES DE EDITAR
+1. Liste os arquivos que pretende alterar.
+2. Explique os testes que serão executados.
+3. Implemente a menor entrega de valor.
+4. Rode validações e atualize documentação quando aplicável.
 ";
 
         Console.ForegroundColor = ConsoleColor.Green;
@@ -414,6 +456,64 @@ public static class Program
         Console.WriteLine(promptTemplate);
         Console.WriteLine("\n================================================\n");
     }
+
+    private static HashSet<string> ExtractProbableFiles(Dictionary<string, List<Qdrant.Client.Grpc.ScoredPoint>> collectionsDict)
+    {
+        var probableFiles = new HashSet<string>();
+        if (!collectionsDict.TryGetValue("cryptotrading_code", out var codePoints))
+        {
+            return probableFiles;
+        }
+
+        foreach (var cp in codePoints)
+        {
+            if (cp.Payload.TryGetValue("source", out var sVal))
+            {
+                probableFiles.Add(sVal.StringValue);
+            }
+        }
+
+        return probableFiles;
+    }
+
+    private static HashSet<string> ExtractSources(Dictionary<string, List<Qdrant.Client.Grpc.ScoredPoint>> collectionsDict)
+    {
+        var sources = new HashSet<string>();
+        foreach (var point in collectionsDict.Values.SelectMany(v => v))
+        {
+            if (point.Payload.TryGetValue("source", out var sVal))
+            {
+                sources.Add(sVal.StringValue);
+            }
+        }
+
+        return sources;
+    }
+
+    private static AgentProfileSpec BuildProfileSpec(string profile)
+    {
+        return profile.Trim().ToLowerInvariant() switch
+        {
+            "copilot" or "github-copilot" => new AgentProfileSpec(
+                "GitHub Copilot / Code Assistant",
+                "Foque em implementação direta, código pequeno, testes objetivos e aderência a padrões locais.",
+                "- Patch compilável\n- Testes unitários ou smoke relevantes\n- Lista curta de arquivos alterados"),
+            "code-review" or "review" => new AgentProfileSpec(
+                "Code Review",
+                "Atue como auditor: priorize bugs, riscos, regressões, segurança, secrets e lacunas de teste.",
+                "- Achados ordenados por severidade\n- Referências de arquivo/linha\n- Riscos residuais e testes ausentes"),
+            "integration" or "integration-agent" => new AgentProfileSpec(
+                "Integration Agent",
+                "Foque em conflitos, compatibilidade entre branches, validações finais e relatório de release.",
+                "- Plano de integração\n- Comandos executados e resultados\n- Pendências bloqueantes e não bloqueantes"),
+            _ => new AgentProfileSpec(
+                "Antigravity",
+                "Foque em autonomia com cautela: use RAG, preserve escopo, paralelize trilhas independentes e valide tudo que alterar.",
+                "- Plano curto\n- Patch mínimo validável\n- Testes e atualização de docs/checklists")
+        };
+    }
+
+    private sealed record AgentProfileSpec(string Name, string Guidance, string Deliverables);
 
     private static string FormatCollectionContext(List<Qdrant.Client.Grpc.ScoredPoint>? points)
     {

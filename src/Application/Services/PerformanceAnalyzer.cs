@@ -86,18 +86,18 @@ public class PerformanceAnalyzer
 
         // Exposure Time: fraction of backtest period where a position was open
         var backtestSpan = (report.EndTime - report.StartTime).TotalHours;
-        if (backtestSpan > 0 && trades.Any(t => t.EntryTime != default && t.ExitTime != default))
+        if (backtestSpan > 0 && trades.Any(t => t.EntryTime != default && t.ExitTime.HasValue))
         {
             var totalHeldHours = trades
-                .Where(t => t.EntryTime != default && t.ExitTime != default)
-                .Sum(t => (t.ExitTime - t.EntryTime).TotalHours);
+                .Where(t => t.EntryTime != default && t.ExitTime.HasValue)
+                .Sum(t => (t.ExitTime!.Value - t.EntryTime).TotalHours);
             report.ExposureTimePercent = (decimal)(totalHeldHours / backtestSpan) * 100m;
         }
 
         // Average Holding Time in hours
-        var completedTrades = trades.Where(t => t.EntryTime != default && t.ExitTime != default).ToList();
+        var completedTrades = trades.Where(t => t.EntryTime != default && t.ExitTime.HasValue).ToList();
         if (completedTrades.Count > 0)
-            report.AvgHoldingTimeHours = completedTrades.Average(t => (t.ExitTime - t.EntryTime).TotalHours);
+            report.AvgHoldingTimeHours = completedTrades.Average(t => (t.ExitTime!.Value - t.EntryTime).TotalHours);
 
         // Max Consecutive Losses
         report.MaxConsecutiveLosses = CalculateMaxConsecutiveLosses(trades);
