@@ -98,7 +98,7 @@ public class PaperTradingTests
 
         public Task<IEnumerable<PaperOrderEvent>> GetPaperOrderEventsAsync(long paperOrderId)
         {
-            var events = OrderEvents.Where(e => e.PaperOrderId == paperOrderId).OrderBy(e => e.CreatedAt).ThenBy(e => e.Id);
+            var events = OrderEvents.Where(e => e.PaperOrderId == paperOrderId).OrderBy(e => e.CreatedAt).ThenBy(e => e.Id).ToList();
             return Task.FromResult<IEnumerable<PaperOrderEvent>>(events);
         }
 
