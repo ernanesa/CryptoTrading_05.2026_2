@@ -31,6 +31,9 @@ builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
 builder.Services.AddSingleton<IBacktestRepository, BacktestRepository>();
 builder.Services.AddSingleton<StrategyRegistry>();
 builder.Services.AddTransient<BacktestEngine>();
+builder.Services.AddTransient<BacktestReportExporter>();
+builder.Services.AddTransient<BacktestReplayService>();
+builder.Services.AddTransient<BacktestComparisonService>();
 builder.Services.AddSingleton<IRiskEngine, RiskEngine>();
 builder.Services.AddSingleton<IRegimeDetectionService, RegimeDetectionService>();
 builder.Services.AddSingleton<IAnomalyDetectionService, AnomalyDetectionService>();
@@ -403,6 +406,7 @@ app.MapGet("/api/backtest/reports/latest", async (IBacktestRepository backtestRe
 
 app.MapGet("/api/backtest/reports/latest/export", async (
     IBacktestRepository backtestRepo,
+    BacktestReportExporter exporter,
     string strategy,
     string symbol,
     string format = "json") =>
@@ -415,12 +419,74 @@ app.MapGet("/api/backtest/reports/latest/export", async (
 
     return format.ToLowerInvariant() switch
     {
-        "md" or "markdown" => Results.Text(ReportExporter.ToMarkdown(report), "text/markdown; charset=utf-8"),
-        "json" => Results.Text(ReportExporter.ToJson(report), "application/json; charset=utf-8"),
+        "md" or "markdown" => Results.Text(exporter.ExportToMarkdown(report), "text/markdown; charset=utf-8"),
+        "json" => Results.Text(exporter.ExportToJson(report), "application/json; charset=utf-8"),
         _ => Results.BadRequest(new { Message = "Formato inválido. Use 'json' ou 'markdown'." })
     };
 })
 .WithName("ExportLatestBacktestReport");
+
+app.MapGet("/api/backtest/compare", async (
+    IBacktestRepository backtestRepo,
+    BacktestComparisonService comparisonService,
+    string fixedStrategy,
+    string adaptiveStrategy,
+    string symbol) =>
+{
+    var fixedReport = await backtestRepo.GetLatestReportAsync(fixedStrategy, symbol);
+    var adaptiveReport = await backtestRepo.GetLatestReportAsync(adaptiveStrategy, symbol);
+
+    if (fixedReport == null || adaptiveReport == null)
+    {
+        return Results.NotFound(new { Message = "Não foi possível encontrar relatórios de backtesting para ambas as estratégias." });
+    }
+
+    var comparison = comparisonService.Compare(fixedReport, adaptiveReport);
+    return Results.Ok(comparison);
+})
+.WithName("CompareBacktests");
+
+app.MapGet("/api/backtest/walk-forward", async (
+    string strategyName,
+    string symbol,
+    string interval,
+    DateTime startTime,
+    DateTime endTime,
+    int trainDays,
+    int testDays,
+    decimal? initialCapital,
+    IFeatureStore store,
+    StrategyRegistry registry,
+    BacktestEngine engine,
+    IBacktestRepository backtestRepo) =>
+{
+    var strategy = registry.Get(strategyName);
+    if (strategy == null) return Results.NotFound(new { Message = "Estratégia não encontrada." });
+
+    var points = (await store.GetMarketDataPointsAsync(symbol, interval, startTime.ToUniversalTime(), endTime.ToUniversalTime())).ToList();
+    if (!points.Any()) return Results.BadRequest(new { Message = "Dados insuficientes." });
+
+    var walkForwardEngine = new WalkForwardEngine(engine);
+    var feeModel = new MakerTakerFeeModel(0.001m, 0.001m);
+    var slippageModel = new VolumeBasedSlippageModel(0.0005m, 0.0001m);
+
+    var reports = walkForwardEngine.RunWalkForward(
+        strategy,
+        points,
+        trainDays,
+        testDays,
+        initialCapital ?? 10000m,
+        feeModel,
+        slippageModel);
+
+    foreach (var r in reports)
+    {
+        await backtestRepo.SaveReportAsync(r);
+    }
+
+    return Results.Ok(reports);
+})
+.WithName("RunWalkForward");
 
 app.MapGet("/api/paper/wallet", async (IFeatureStore store) =>
 {
