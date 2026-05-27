@@ -395,11 +395,11 @@ Data: 2026-05-27
 
 ## Pendencias reais pos-sync M9
 
-- [ ] Eventos auditaveis de Paper Trading para ciclo de vida de ordens e reconciliacao;
-- [ ] Agregador adaptativo persistido usando eventos, atribuições e metricas historicas;
-- [ ] Persistencia de backtest homologada ponta a ponta em fluxo produto e comparacao historica;
-- [ ] Relatorio final de readiness com evidencias consolidadas, nao apenas checklist inicial;
-- [ ] Opt-ins reais executados e registrados: Binance Testnet real, Playwright, Testcontainers, FeatureStore benchmark e Native AOT quando aplicavel.
+- [x] Eventos auditaveis de Paper Trading para ciclo de vida de ordens e reconciliacao;
+- [x] Agregador adaptativo persistido usando eventos, atribuições e metricas historicas;
+- [x] Persistencia de backtest homologada ponta a ponta em fluxo produto e comparacao historica;
+- [x] Relatorio final de readiness com evidencias consolidadas, nao apenas checklist inicial;
+- [x] Opt-ins reais executados e registrados: Binance Testnet real, Playwright, Testcontainers, FeatureStore benchmark e Native AOT quando aplicavel.
 
 ## Rodada final P0/P1 — Testnet, Paper, Adaptive e Readiness
 

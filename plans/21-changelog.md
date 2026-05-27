@@ -2,6 +2,7 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-27 | M9 Baseline Stabilized: Solved compiler conversion warning/error in mock Paper trading order event retrieval in `PaperTradingTests.cs` (returning an explicit list via `.ToList()`), restoring full solution compliance and a 100% green baseline. Sincronizadas checklists reais de maturidade e gerado o Relatório Final de Consolidação do MVP (`plans/32-final-mvp-report.md`). |
 | 2026-05-27 | Task A Sync M9: M9, plano paralelo, README e master checklist sincronizados com o estado real; Testnet REST bridge e Dashboard RuntimeMode marcados como feitos; Paper events, adaptive aggregator, backtest persistence homologada, final report e opt-ins reais mantidos como pendencias |
 | 2026-05-27 | Rodada final P0/P1: ponte REST Testnet agora pre-valida `RiskDecision`, registra `DecisionAudit` e bloqueia antes do executor quando invalida; Paper Trading ganhou transicao `New -> Open`, PnL incremental em venda e testes de reconciliacao; Adaptive Orchestration passou a expor breakdown estruturado do score; readiness docs alinhadas a `ci.yml` obrigatorio e `hardening-gates.yml` opt-in |
 | 2026-05-27 | Task D/F: `context-pack` do RagTool passou a emitir objetivo, fontes, arquivos prováveis, riscos, testes, critérios e dependências; `optimize-input` ganhou `--profile` para Antigravity, Copilot, Code Review e Integration Agent; criados prompts salvos em `plans/prompts/`; relatórios Markdown de backtest agora incluem métricas avançadas e performance por regime |
