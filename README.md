@@ -134,3 +134,4 @@ Antes de qualquer atividade:
 - `ernanesa/Bettina`: referência histórica de pesquisa.
 
 Esses repositórios são apenas leitura para este ciclo.
+- Adicionado integração Real com Binance Testnet (opcional, protegido por RiskEngine)
