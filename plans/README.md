@@ -36,7 +36,9 @@ Esta pasta contém o planejamento oficial do projeto `CryptoTrading_05.2026_2`.
 | 25 | `25-development-plan-and-rag-setup.md` | Plano detalhado de desenvolvimento e setup do RAG |
 | 26 | `26-hardening-report.md` | Relatório de hardening, gates, benchmarks e riscos conhecidos |
 | 27 | `27-stage-09-validation-reality-check.md` | Avaliação de maturidade técnica das fases (Reality Check M9) |
-| 28 | `28-final-readiness-report.md` | Relatório de readiness de produção final (Pendente) |
+| 28 | `28-parallel-execution-plan.md` | Plano de execução em paralelo e orquestração de branchs |
+| 29 | `29-finalization-backlog.md` | Backlog de priorização para o MVP final |
+| 30 | `30-final-mvp-report.md` | Relatório final de consolidação do MVP |
 
 ## Regra de evolução
 

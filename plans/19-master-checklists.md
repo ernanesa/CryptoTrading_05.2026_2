@@ -15,7 +15,7 @@ Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 | M6 Intelligence Layer | 100% | Heuristic Prototype |
 | M7 Adaptive Strategy Orchestration | 100% | Heuristic Prototype |
 | M8 Hardening | 100% | Initial Hardening |
-| M9 Validation & Reality Check | In Progress | In Progress |
+| M9 Validation & Reality Check | Completed | Completed |
 
 ## Checklist antes de qualquer atividade
 
