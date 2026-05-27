@@ -16,7 +16,7 @@
 | **GT-01** | `git status --short` | Sem modificações pendentes no worktree | **APROVADO** | O diretório de trabalho está completamente limpo e pronto para auditoria. |
 | **GT-02** | `dotnet restore CryptoTrading.slnx` | Restauração concluída com sucesso | **APROVADO** | Dependências e pacotes NuGet do .NET 10 restaurados. |
 | **GT-03** | `dotnet build CryptoTrading.slnx -c Release` | Compilação com 0 Erros e 0 Avisos | **APROVADO** | Todas as bibliotecas de domínio, infraestrutura, aplicação e testes compilaram em modo de produção. |
-| **GT-04** | `dotnet test -c Release` | **94 Testes Aprovados**, 1 Ignorado, 0 Falhas | **APROVADO** | Todos os testes unitários de lógica de trading, risk management, replay e backtest passaram. |
+| **GT-04** | `dotnet test -c Release` | **97 Testes Aprovados**, 1 Ignorado, 0 Falhas | **APROVADO** | Todos os testes unitários de lógica de trading, risk management, replay e backtest passaram. |
 | **GT-05** | `cd dashboard && npm run build` | Bundle compilado com sucesso em 344ms | **APROVADO** | Dashboard frontend (Vite + TypeScript + React) gerou os arquivos estáticos `/dist` sem falhas. |
 | **GT-06** | `git diff --check` | Retornou 0 avisos de whitespace ou formatação | **APROVADO** | Estilo de código limpo de acordo com as regras globais e `.editorconfig`. |
 
