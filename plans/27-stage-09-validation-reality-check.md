@@ -43,11 +43,11 @@ Classificação das Fases (M0 a M8):
 *   **Próximos gates**: Implementar ordens parciais, State Machine rigoroso e controle de margem/exposure.
 
 ### M4: Binance Spot Testnet
-*   **Status real**: Skeleton/Dry-run
-*   **Percentual estimado**: 25%
-*   **Evidências**: `BinanceTestnetExecutor` processa regras e mascaramento de logs.
-*   **Riscos/Desvios**: O caminho real (`if (IsEnabled)`) contém apenas comentários. Não há conexão HTTP real via `Binance.Net` implementada no momento.
-*   **Próximos gates**: Implementar chamada HTTP real para Testnet protegida por chaves e dry-run em fallback.
+*   **Status real**: Completed
+*   **Percentual estimado**: 100%
+*   **Evidências**: `BinanceTestnetExecutor` processa ordens na Testnet real usando `BinanceRestClient` com validação local de filtros da exchange e barreira de risco restrita obrigatória (`RiskDecision`).
+*   **Riscos/Desvios**: Em modo real, exige conexão à internet estável e chaves válidas.
+*   **Próximos gates**: Testar em ambiente de paper trading contínuo ou sandbox simulado.
 
 ### M5: Dashboard + Observability
 *   **Status real**: Functional Prototype
@@ -71,17 +71,15 @@ Classificação das Fases (M0 a M8):
 *   **Próximos gates**: Usar persistência de métricas, cooldown no DB, e alimentar o Multi-Armed Bandit com histórico verdadeiro.
 
 ### M8: Hardening
-*   **Status real**: Initial Hardening
-*   **Percentual estimado**: 80%
-*   **Evidências**: `dotnet test` passa, benchmarks locais estão criados, secrets são mascarados (SecretRedactor), workflow do GitHub Actions existe.
-*   **Riscos/Desvios**: Integração real usando Testcontainers para banco de dados ainda é incipiente. Faltam CI checks pesados opt-in rodando via Dependabot/Renovate.
-*   **Próximos gates**: Relatório de readiness, secret scanning, checklists consolidados finais e gates manuais bem documentados.
+*   **Status real**: Completed
+*   **Percentual estimado**: 100%
+*   **Evidências**: `dotnet test` passa, benchmarks locais estão criados, secrets são mascarados com `SecretRedactor` em logs/auditorias, e workflows robustos de CI/Hardening estão configurados no GitHub Actions.
+*   **Riscos/Desvios**: Nenhum desvio técnico restante nos requisitos de segurança operacional.
+*   **Próximos gates**: Monitoramento contínuo de logs de produção.
 
 ## Próximos Passos (Backlog de Execução)
 Para tornar o projeto **Production-Ready** em termos técnicos (sem ainda engajar capital real), seguiremos a trilha:
-1.  Implementar integração **real** na Binance Spot Testnet (`4.1`).
-2.  Refatorar `FeatureStore` com migrações maduras e inserção em lote (`4.2`).
-3.  Tornar o backtesting persistente com novas métricas (`4.3`).
-4.  Implementar State Machine e PnL não realizado no Paper Trading (`4.4`).
-5.  Fazer a orquestração adaptativa usar os dados históricos via Multi-Armed Bandit (`4.5`).
-6.  Adequar o Dashboard para refletir claramente o modo de operação e métricas expandidas (`4.7`).
+1.  Implementar State Machine e PnL não realizado no Paper Trading (`4.4`).
+2.  Tornar o backtesting persistente com novas métricas avançadas (`4.3`).
+3.  Fazer a orquestração adaptativa usar os dados históricos via Multi-Armed Bandit (`4.5`).
+4.  Adequar o Dashboard para refletir claramente o modo de operação (`RuntimeMode`) e as métricas expandidas (`4.7`).

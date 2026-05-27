@@ -518,7 +518,7 @@ Também atualize:
 - README.md;
 - plans/README.md;
 - plans/19-master-checklists.md;
-- plans/21-changelog.md;
+- plans/21-changelog.md; 
 - ADRs, se houver novas decisões.
 
 ====================================================================

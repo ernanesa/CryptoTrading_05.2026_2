@@ -23,5 +23,23 @@ public class BacktestReport
     public decimal SharpeRatio { get; set; }
     public decimal SortinoRatio { get; set; }
     public decimal CalmarRatio { get; set; }
+
+    // Advanced metrics (Task F)
+    public decimal ExposureTimePercent { get; set; }
+    public double AvgHoldingTimeHours { get; set; }
+    public int MaxConsecutiveLosses { get; set; }
+    public decimal FeeImpactPercent { get; set; }
+    public decimal SlippageImpactPercent { get; set; }
+    public Dictionary<string, RegimePerformance> RegimeBreakdown { get; set; } = new();
+
     public List<Position> Trades { get; set; } = new();
+}
+
+public class RegimePerformance
+{
+    public string Regime { get; set; } = string.Empty;
+    public int Trades { get; set; }
+    public decimal WinRate { get; set; }
+    public decimal PnL { get; set; }
+    public decimal AvgReturn { get; set; }
 }

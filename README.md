@@ -70,7 +70,7 @@ M8 Hardening
 M9 Validation & Reality Check
 ```
 
-Status atual: **M0 a M8 reavaliados** na nova fase de refinamento M9 iniciada em 2026-05-24, com o objetivo de elevar o grau de prontidão de produção e substituir heurísticas por integrações reais. Detalhes em [`plans/27-stage-09-validation-reality-check.md`](./plans/27-stage-09-validation-reality-check.md).
+Status atual: **M0 a M9 reavaliados e consolidados** na nova fase de refinamento M9, com a integracao real na Binance Spot Testnet, barreira restrita de `RiskDecision` (M4), status de `RuntimeMode` global (M8), e ferramentas RAG enriquecidas concluídas. Detalhes em [`plans/27-stage-09-validation-reality-check.md`](./plans/27-stage-09-validation-reality-check.md).
 
 Benchmarks locais:
 

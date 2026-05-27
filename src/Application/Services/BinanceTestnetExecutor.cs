@@ -17,6 +17,7 @@ public class BinanceTestnetExecutor
     private readonly ILogger<BinanceTestnetExecutor> _logger;
     private readonly IMetricsService? _metrics;
     private readonly IRiskEngine _riskEngine;
+    private readonly SecretRedactor _secretRedactor;
     private readonly bool _isEnabled;
     private readonly string _apiKey;
     private readonly string _apiSecret;
@@ -27,12 +28,14 @@ public class BinanceTestnetExecutor
         IConfiguration configuration,
         ILogger<BinanceTestnetExecutor> _loggerInst,
         IRiskEngine riskEngine,
+        SecretRedactor secretRedactor,
         IMetricsService? metrics = null)
     {
         _store = store;
         _validator = validator;
         _logger = _loggerInst;
         _riskEngine = riskEngine;
+        _secretRedactor = secretRedactor;
         _metrics = metrics;
 
         // Configuracoes lidas sem ConfigurationBinder para manter compatibilidade Native AOT.
@@ -52,7 +55,7 @@ public class BinanceTestnetExecutor
 
     public bool IsEnabled => _isEnabled;
 
-    public async Task<TestnetOrder> ExecuteOrderAsync(TestnetOrder order)
+    public async Task<TestnetOrder> ExecuteOrderAsync(TestnetOrder order, RiskDecision? riskDecision = null)
     {
         _metrics?.IncrementTestnetRequests();
 
@@ -62,30 +65,115 @@ public class BinanceTestnetExecutor
             Symbol = order.Symbol,
             Action = $"SUBMIT_ORDER_{order.Side}_{order.Type}",
             Status = "NEW",
-            Details = $"Processando ordem de {order.Quantity} {order.Symbol} a ${order.Price}. Modo Real: {_isEnabled}"
+            Details = _secretRedactor.Redact($"Processando ordem de {order.Quantity} {order.Symbol} a ${order.Price}. Modo Real: {_isEnabled}")
         };
         await _store.SaveTestnetAuditLogAsync(auditInit);
 
-        // 2. Obter regras de filtro para validação local
+        // 2. Strict Risk Decision Gate
+        if (riskDecision == null)
+        {
+            order.Status = "REJECTED";
+            order.UpdatedAt = DateTime.UtcNow;
+            await _store.SaveTestnetOrderAsync(order);
+
+            await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog
+            {
+                Symbol = order.Symbol,
+                Action = "RISK_DECISION_MISSING",
+                Status = "FAILED",
+                Details = "Ordem rejeitada: Decisao de risco ausente (RiskDecision e obrigatoria)."
+            });
+            return order;
+        }
+
+        if (!riskDecision.Decision.Equals("APPROVED", StringComparison.OrdinalIgnoreCase))
+        {
+            order.Status = "REJECTED";
+            order.UpdatedAt = DateTime.UtcNow;
+            await _store.SaveTestnetOrderAsync(order);
+
+            await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog
+            {
+                Symbol = order.Symbol,
+                Action = "RISK_DECISION_REJECTED",
+                Status = "FAILED",
+                Details = $"Ordem rejeitada: Decisao de risco nao esta aprovada ({riskDecision.Decision}). Razao: {riskDecision.Reason}"
+            });
+            return order;
+        }
+
+        if (riskDecision.ExpiresAt < DateTime.UtcNow)
+        {
+            order.Status = "REJECTED";
+            order.UpdatedAt = DateTime.UtcNow;
+            await _store.SaveTestnetOrderAsync(order);
+
+            await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog
+            {
+                Symbol = order.Symbol,
+                Action = "RISK_DECISION_EXPIRED",
+                Status = "FAILED",
+                Details = $"Ordem rejeitada: Decisao de risco expirou em {riskDecision.ExpiresAt} (Agora: {DateTime.UtcNow})."
+            });
+            return order;
+        }
+
+        if (!riskDecision.Symbol.Equals(order.Symbol, StringComparison.OrdinalIgnoreCase) || 
+            !riskDecision.OrderSide.Equals(order.Side, StringComparison.OrdinalIgnoreCase))
+        {
+            order.Status = "REJECTED";
+            order.UpdatedAt = DateTime.UtcNow;
+            await _store.SaveTestnetOrderAsync(order);
+
+            await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog
+            {
+                Symbol = order.Symbol,
+                Action = "RISK_DECISION_MISMATCH",
+                Status = "FAILED",
+                Details = $"Ordem rejeitada: Incompatibilidade entre a decisao de risco ({riskDecision.Symbol} {riskDecision.OrderSide}) e a ordem ({order.Symbol} {order.Side})."
+            });
+            return order;
+        }
+
+        // 3. Obter regras de filtro para validação local
         var filters = await _store.GetExchangeFilterInfoAsync(order.Symbol);
         if (filters == null)
         {
-            // Criar filtros padrão robustos caso não existam no banco de dados para evitar travar a execução
-            filters = new ExchangeFilterInfo
+            if (!_isEnabled)
             {
-                Symbol = order.Symbol,
-                TickSize = 0.01m,
-                StepSize = 0.0001m,
-                MinQty = 0.0001m,
-                MaxQty = 1000m,
-                MinNotional = 5.0m,
-                PricePrecision = 2,
-                QuantityPrecision = 4
-            };
-            await _store.SaveExchangeFilterInfoAsync(filters);
+                // Criar filtros padrão robustos caso não existam no banco de dados para evitar travar a execução em dry-run
+                filters = new ExchangeFilterInfo
+                {
+                    Symbol = order.Symbol,
+                    TickSize = 0.01m,
+                    StepSize = 0.0001m,
+                    MinQty = 0.0001m,
+                    MaxQty = 1000m,
+                    MinNotional = 5.0m,
+                    PricePrecision = 2,
+                    QuantityPrecision = 4
+                };
+                await _store.SaveExchangeFilterInfoAsync(filters);
+            }
+            else
+            {
+                // No modo real, rejeitamos se os filtros nao existirem para garantir total seguranca
+                order.Status = "REJECTED";
+                order.UpdatedAt = DateTime.UtcNow;
+                await _store.SaveTestnetOrderAsync(order);
+
+                await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog
+                {
+                    Symbol = order.Symbol,
+                    Action = "EXCHANGE_FILTERS_MISSING",
+                    Status = "FAILED",
+                    Details = "Ordem rejeitada: Filtros oficiais da exchange ausentes no banco de dados para execucao real."
+                });
+                return order;
+            }
         }
 
-        // 3. Validação local antes do envio
+        // 4. Validação local antes do envio
         var validation = _validator.ValidateOrder(order, filters);
         if (!validation.IsValid)
         {
@@ -104,32 +192,7 @@ public class BinanceTestnetExecutor
             return order;
         }
 
-                // 3.5. RiskEngine Validation
-        var signal = new TradeSignal
-        {
-            Symbol = order.Symbol,
-            Type = order.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase) ? CryptoTrading.Domain.Enums.TradeSignalType.Buy : CryptoTrading.Domain.Enums.TradeSignalType.Sell,
-            Timestamp = DateTime.UtcNow,
-            Description = "Testnet Order Execution"
-        };
-        var balances = await GetAccountSnapshotAsync();
-        var riskResult = _riskEngine.ValidateSignal(signal, order.Price, 0.01m, balances, Enumerable.Empty<PaperTrade>(), CryptoTrading.Domain.Enums.RiskStatus.Normal);
-        
-        if (!riskResult.IsApproved)
-        {
-            order.Status = "REJECTED";
-            order.UpdatedAt = DateTime.UtcNow;
-            await _store.SaveTestnetOrderAsync(order);
-
-            await _store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = order.Symbol, StrategyName = "Manual/Testnet", SignalType = signal.Type.ToString().ToUpper(), Price = order.Price, Timestamp = DateTime.UtcNow, Decision = "REJECTED", Reason = $"Bloqueado pelo RiskEngine: {riskResult.Reason}" });
-            await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog { Symbol = order.Symbol, Action = "RISK_VALIDATION_FAILED", Status = "FAILED", Details = $"Ordem bloqueada pelo RiskEngine: {riskResult.Reason}" });
-
-            return order;
-        }
-
-        await _store.SaveDecisionAuditAsync(new DecisionAudit { Symbol = order.Symbol, StrategyName = "Manual/Testnet", SignalType = signal.Type.ToString().ToUpper(), Price = order.Price, Timestamp = DateTime.UtcNow, Decision = "APPROVED", Reason = "Aprovado pelo RiskEngine" });
-
-        // 4. Fluxo Simulado / Dry-Run (se Testnet estiver desabilitada)
+        // 5. Fluxo Simulado / Dry-Run (se Testnet estiver desabilitada)
         if (!_isEnabled)
         {
             order.Status = "FILLED"; // Em simulação de dry-run assume preenchimento instantâneo
@@ -142,22 +205,22 @@ public class BinanceTestnetExecutor
                 Symbol = order.Symbol,
                 Action = "DRY_RUN_EXECUTION",
                 Status = "SUCCESS",
-                Details = $"Ordem executada em modo Dry-Run. ID Binance fictício: {order.BinanceOrderId}"
+                Details = _secretRedactor.Redact($"Ordem executada em modo Dry-Run. ID Binance ficticio: {order.BinanceOrderId}")
             });
 
             return order;
         }
 
-        // 5. Fluxo Real via API Binance Testnet
+        // 6. Fluxo Real via API Binance Testnet
         try
         {
-            // Proteção estrita de secrets: mascarar credenciais nos logs
-            var maskedKey = _apiKey.Length > 6 ? $"{_apiKey.Substring(0, 4)}...{_apiKey.Substring(_apiKey.Length - 2)}" : "***";
-            _logger.LogInformation("Conectando à Binance Spot Testnet com API Key {ApiKey}", maskedKey);
+            // Proteção estrita de secrets: mascarar credenciais nos logs usando SecretRedactor
+            var maskedKey = _secretRedactor.Redact($"api_key={_apiKey}");
+            _logger.LogInformation("Conectando a Binance Spot Testnet com {ApiKey}", maskedKey);
 
             if (_apiKey.Contains("placeholder") || string.IsNullOrWhiteSpace(_apiKey))
             {
-                throw new Exception("Credenciais da Binance Testnet são fictícias ou inválidas.");
+                throw new Exception("Credenciais da Binance Testnet sao ficticias ou invalidas.");
             }
 
             using var client = new BinanceRestClient();
@@ -178,7 +241,9 @@ public class BinanceTestnetExecutor
                 throw new Exception($"Erro da API Binance: {result.Error?.Message}");
             }
 
-            order.Status = "FILLED"; // Para simplificar o teste, assumimos preenchido ou atualizar via status check dps
+            // Real Testnet mode: NEVER assume FILLED. We check returned status or query via Sync/GetOrderStatus
+            var statusStr = result.Data.Status.ToString().ToUpper();
+            order.Status = statusStr == "NEW" ? "NEW" : (statusStr == "FILLED" ? "FILLED" : (statusStr == "PARTIALLY_FILLED" ? "PARTIALLY_FILLED" : "REJECTED"));
             order.BinanceOrderId = result.Data.Id.ToString();
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
@@ -188,7 +253,7 @@ public class BinanceTestnetExecutor
                 Symbol = order.Symbol,
                 Action = "BINANCE_TESTNET_EXECUTION",
                 Status = "SUCCESS",
-                Details = $"Ordem executada com sucesso na Binance Testnet. ID: {order.BinanceOrderId}"
+                Details = $"Ordem enviada com sucesso a Binance Testnet. ID: {order.BinanceOrderId}, Status: {order.Status}"
             });
         }
         catch (Exception ex)
@@ -197,18 +262,18 @@ public class BinanceTestnetExecutor
             order.UpdatedAt = DateTime.UtcNow;
             await _store.SaveTestnetOrderAsync(order);
 
-            // Garantimos que a mensagem de erro não exponha o segredo bruto caso esteja em stacktraces
-            var safeMessage = ex.Message.Replace(_apiSecret, "******").Replace(_apiKey, "******");
+            // Garantimos que a mensagem de erro não exponha o segredo bruto
+            var safeMessage = _secretRedactor.Redact(ex.Message);
 
             await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog
             {
                 Symbol = order.Symbol,
                 Action = "BINANCE_TESTNET_FAILED",
                 Status = "FAILED",
-                Details = $"Falha de execução na Binance Testnet: {safeMessage}"
+                Details = $"Falha de execucao na Binance Testnet: {safeMessage}"
             });
 
-            _logger.LogError("Erro de comunicação com a Binance Testnet: {Message}", safeMessage);
+            _logger.LogError("Erro de comunicacao com a Binance Testnet: {Message}", safeMessage);
         }
 
         return order;
@@ -242,8 +307,6 @@ public class BinanceTestnetExecutor
 
         foreach (var openOrder in result.Data)
         {
-            // Na vida real, devemos buscar a ordem local pelo BinanceOrderId e atualizá-la
-            // Simulação de audit log para sincronização:
             await _store.SaveTestnetAuditLogAsync(new TestnetAuditLog
             {
                 Symbol = symbol,

@@ -269,86 +269,173 @@ public static class Program
         }
     }
 
-    private static async Task<string> BuildContextPackAsync(string rawInput)
+    private static async Task<Dictionary<string, List<Qdrant.Client.Grpc.ScoredPoint>>> BuildContextCollectionsPackAsync(string rawInput)
     {
         using var qdrant = new QdrantService();
         using var embedder = new EmbeddingService();
 
         var queryVector = embedder.GenerateEmbedding(rawInput);
         var collections = new[] { "cryptotrading_docs", "cryptotrading_decisions", "cryptotrading_tasks", "cryptotrading_code" };
-        var allResults = new List<Qdrant.Client.Grpc.ScoredPoint>();
+        var resultsDict = new Dictionary<string, List<Qdrant.Client.Grpc.ScoredPoint>>();
 
         foreach (var col in collections)
         {
-            var results = await qdrant.SearchAsync(col, queryVector, limit: 2);
-            allResults.AddRange(results);
+            try
+            {
+                var results = await qdrant.SearchAsync(col, queryVector, limit: 3);
+                resultsDict[col] = results.OrderByDescending(r => r.Score).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AVISO] Erro ao buscar na colecao {col}: {ex.Message}");
+                resultsDict[col] = new List<Qdrant.Client.Grpc.ScoredPoint>();
+            }
         }
 
-        allResults = allResults.OrderByDescending(r => r.Score).Take(5).ToList();
-
-        var contextPack = new System.Text.StringBuilder();
-        foreach (var r in allResults)
-        {
-            var payload = r.Payload;
-            var source = payload.TryGetValue("source", out var s) ? s.StringValue : "Desconhecido";
-            var section = payload.TryGetValue("section", out var sec) ? sec.StringValue : "Geral";
-            var content = payload.TryGetValue("content", out var c) ? c.StringValue : "";
-
-            contextPack.AppendLine($"\n--- Fonte: {source} > {section} ---");
-            contextPack.AppendLine(content);
-        }
-
-        return contextPack.ToString();
+        return resultsDict;
     }
 
     private static async Task RunContextPackAsync(string rawInput)
     {
-        var context = await BuildContextPackAsync(rawInput);
-        Console.WriteLine(context);
+        Console.WriteLine($"\n=== CONTEXT PACK PARA: \"{rawInput}\" ===");
+        var collectionsDict = await BuildContextCollectionsPackAsync(rawInput);
+
+        foreach (var pair in collectionsDict)
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"\n>>> COLEÇÃO: {pair.Key} (Matches: {pair.Value.Count}) <<<");
+            Console.ResetColor();
+
+            foreach (var r in pair.Value)
+            {
+                var payload = r.Payload;
+                var source = payload.TryGetValue("source", out var s) ? s.StringValue : "Desconhecido";
+                var section = payload.TryGetValue("section", out var sec) ? sec.StringValue : "Geral";
+                var content = payload.TryGetValue("content", out var c) ? c.StringValue : "";
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"  - Score: {r.Score:F4} | Fonte: {source} > {section}");
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine(new string('-', 50));
+                Console.ResetColor();
+                Console.WriteLine(content.Length > 300 ? content[..300] + "..." : content);
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine(new string('-', 50));
+                Console.ResetColor();
+            }
+        }
     }
 
     private static async Task RunOptimizeInputAsync(string rawInput)
     {
-        var contextPack = await BuildContextPackAsync(rawInput);
+        var collectionsDict = await BuildContextCollectionsPackAsync(rawInput);
 
-        var optimizedPrompt = $@"Você está trabalhando no repositório ernanesa/CryptoTrading_05.2026_2.
+        var docsContext = FormatCollectionContext(collectionsDict.GetValueOrDefault("cryptotrading_docs"));
+        var decisionsContext = FormatCollectionContext(collectionsDict.GetValueOrDefault("cryptotrading_decisions"));
+        var tasksContext = FormatCollectionContext(collectionsDict.GetValueOrDefault("cryptotrading_tasks"));
+        var codeContext = FormatCollectionContext(collectionsDict.GetValueOrDefault("cryptotrading_code"));
 
-Objetivo:
+        var probableFiles = new HashSet<string>();
+        if (collectionsDict.TryGetValue("cryptotrading_code", out var codePoints))
+        {
+            foreach (var cp in codePoints)
+            {
+                if (cp.Payload.TryGetValue("source", out var sVal))
+                {
+                    probableFiles.Add(sVal.StringValue);
+                }
+            }
+        }
+
+        var filesStr = probableFiles.Count > 0 
+            ? string.Join("\n- ", probableFiles.Select(f => $"[{Path.GetFileName(f)}](file://{f})")) 
+            : "[Nenhum arquivo identificado de forma especifica; consulte a colecao de codigo]";
+
+        var promptTemplate = $@"Você é um agente de desenvolvimento especialista trabalhando no repositório `ernanesa/CryptoTrading_05.2026_2`.
+
+## OBJETIVO DO PEDIDO
 {rawInput}
 
-Contexto recuperado do RAG:
-{contextPack}
+## CONTEXTO E DOCUMENTAÇÃO RECUPERADA (RAG)
+### Documentos e Guias de Estágios:
+{docsContext}
 
-Arquivos Prováveis (Com base no contexto, verifique e edite):
-[Liste os arquivos principais aqui]
+### Decisões de Arquitetura Relevantes:
+{decisionsContext}
 
-Riscos e Precauções:
-- não bypassar RiskEngine
-- seguir .NET-first e Dapper-first
-- verificar testes existentes
+### Checklists e Histórico de Tarefas Relacionadas:
+{tasksContext}
 
-Testes:
-- defina testes de unidade ou integração
-- execute validações necessárias
+### Referências Próximas de Código Atual:
+{codeContext}
 
-Critérios de Aceite:
-- [Preecher critérios baseados no objetivo]
+## ARQUIVOS PROVÁVEIS PARA MODIFICAÇÃO/ANÁLISE
+- {filesStr}
 
-Paralelização (se aplicável):
-- identifique se há algo que pode ser quebrado em sub-agentes
+## RISCOS E DIRETRIZES TÉCNICAS ESTRITAS
+1. **Nenhum Bypass ao RiskEngine**: Qualquer fluxo de trade (Paper ou Testnet) DEVE passar rigorosamente pelo `RiskEngine`.
+2. **Nenhuma Operação Real**: Todas as chaves devem ser validadas. Se estiver na Binance Testnet Real, nunca assuma preenchimento instantâneo (FILLED) sem consultar a exchange ou conferir o status retornado.
+3. **Redação Absoluta de Segredos**: Nunca logue ou persista chaves de API cruas. Use o `SecretRedactor` em qualquer log ou auditoria.
+4. **Princípios de Arquitetura**: Manter compatibilidade com C# 14, .NET 10, e manter queries rápidas via Dapper.
 
-Regras obrigatórias:
-- escrever somente neste repositório;
-- consultar planos relevantes;
-- atualizar checklists ao final.
+## CRITÉRIOS DE ACEITAÇÃO SUGERIDOS
+- Cobertura de testes unitários ou de integração robustos.
+- Build íntegro em release (`dotnet test -c Release`).
+- Execução com tempo de latência de CPU reduzido e livre de Memory Leaks.
 
-Antes de codar, gere um plano curto e diga quais arquivos serão alterados.";
+---
+
+## PERFIS DE COMPORTAMENTO RECOMENDADOS
+
+### PERFIL A: ANTIGRAVITY (Agente Autônomo Chefe)
+> [!NOTE]
+> Foco em auditoria rigorosa de todas as ramificações de risco, integração do dashboard, robustez matemática das heurísticas adaptativas e plano de liberação (Release Readiness).
+> Postura: Altamente estratégico, audita as restrições e re-planeja cenários de caos.
+
+### PERFIL B: GITHUB COPILOT / CODE-ASSISTANT (Desenvolvedor de Componentes)
+> [!TIP]
+> Foco em gerar implementações limpas de algoritmos específicos, queries SQL Dapper e testes unitários parametrizados.
+> Postura: Foco em sintaxe perfeita, conformidade com C# 14 e geração rápida de arquivos de teste.
+
+### PERFIL C: BRANCH WORKER (Agente Focado em Sub-tarefa)
+> [!IMPORTANT]
+> Foco no escopo ultra-específico da branch indicada. Não deve desviar para refatorações alheias.
+> Postura: Assertividade cirúrgica, resolve estritamente os critérios de aceitação e reporta progresso ao task.md.
+
+### PERFIL D: CODE REVIEWER (Auditor de Pull Request)
+> [!CAUTION]
+> Foco em conformidade regulatória interna, segurança de credenciais, cobertura de cenários negativos e legibilidade.
+> Postura: Cético, busca pontos falhos, vulnerabilidades de concorrência ou bypass nos limites de alocação de capital.
+";
 
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("\n=== PROMPT OTIMIZADO PARA AGENTE DE IA ===");
+        Console.WriteLine("\n=== PROMPT OTIMIZADO COMPLETO (RAG-ENRICHED) ===");
         Console.ResetColor();
-        Console.WriteLine(optimizedPrompt);
-        Console.WriteLine("\n==========================================\n");
+        Console.WriteLine(promptTemplate);
+        Console.WriteLine("\n================================================\n");
+    }
+
+    private static string FormatCollectionContext(List<Qdrant.Client.Grpc.ScoredPoint>? points)
+    {
+        if (points == null || points.Count == 0)
+        {
+            return "*(Nenhum item relevante localizado nesta coleção)*";
+        }
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var p in points)
+        {
+            var payload = p.Payload;
+            var source = payload.TryGetValue("source", out var s) ? s.StringValue : "Desconhecido";
+            var section = payload.TryGetValue("section", out var sec) ? sec.StringValue : "Geral";
+            var content = payload.TryGetValue("content", out var c) ? c.StringValue : "";
+
+            sb.AppendLine($"> **Fonte: {Path.GetFileName(source)} (Seção: {section}, Score: {p.Score:F3})**");
+            sb.AppendLine($"> {content.Replace("\n", "\n> ")}");
+            sb.AppendLine(">");
+        }
+
+        return sb.ToString();
     }
 
     private static bool IsCodeFile(string filePath)

@@ -1,4 +1,5 @@
 using CryptoTrading.Application.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace CryptoTrading.UnitTests;
 
@@ -32,7 +33,12 @@ public class HardeningTests
     [Fact]
     public void HardeningReportService_GeneratesReleaseCandidateReport()
     {
-        var service = new HardeningReportService(new ChaosScenarioRunner(), new BenchmarkCatalog());
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new System.Collections.Generic.Dictionary<string, string?>
+        {
+            { "Binance:Testnet:Enabled", "false" }
+        }).Build();
+        var runtimeStatus = new RuntimeStatusService(config);
+        var service = new HardeningReportService(new ChaosScenarioRunner(), new BenchmarkCatalog(), runtimeStatus);
 
         var report = service.Generate();
 

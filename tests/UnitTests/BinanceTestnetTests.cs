@@ -144,10 +144,12 @@ public class BinanceTestnetTests
             { "Binance:Testnet:Enabled", "false" }
         }).Build();
 
-        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine());
+        var redactor = new SecretRedactor();
+        var risk = new RiskDecision("BTCUSDT", "APPROVED", "Manual approval", DateTime.UtcNow, DateTime.UtcNow.AddMinutes(10), "BUY", 50000m, 0.1m);
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
         var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_1", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
 
-        var result = await executor.ExecuteOrderAsync(order);
+        var result = await executor.ExecuteOrderAsync(order, risk);
 
         Assert.Equal("FILLED", result.Status);
         Assert.StartsWith("MOCK_BINANCE_", result.BinanceOrderId);
@@ -163,12 +165,14 @@ public class BinanceTestnetTests
             { "Binance:Testnet:Enabled", "false" }
         }).Build();
 
-        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine());
+        var redactor = new SecretRedactor();
+        var risk = new RiskDecision("BTCUSDT", "APPROVED", "Manual approval", DateTime.UtcNow, DateTime.UtcNow.AddMinutes(10), "BUY", 50000m, 0m);
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
         
         // Quantidade zero invalida a ordem
         var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_2", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0m };
 
-        var result = await executor.ExecuteOrderAsync(order);
+        var result = await executor.ExecuteOrderAsync(order, risk);
 
         Assert.Equal("REJECTED", result.Status);
         Assert.Contains(store.Logs, l => l.Action == "VALIDATION_FAILED" && l.Status == "FAILED");
@@ -178,6 +182,17 @@ public class BinanceTestnetTests
     public async Task ExecuteOrderAsync_RealMode_InvalidCredentials_ThrowsAndLogsSecretMasked()
     {
         var store = new InMemoryFeatureStore();
+        await store.SaveExchangeFilterInfoAsync(new ExchangeFilterInfo
+        {
+            Symbol = "BTCUSDT",
+            TickSize = 0.01m,
+            StepSize = 0.0001m,
+            MinQty = 0.0001m,
+            MaxQty = 1000m,
+            MinNotional = 5.0m,
+            PricePrecision = 2,
+            QuantityPrecision = 4
+        });
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             { "Binance:Testnet:Enabled", "true" },
@@ -185,22 +200,23 @@ public class BinanceTestnetTests
             { "Binance:Testnet:ApiSecret", "secret_to_redact" }
         }).Build();
 
-        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine());
+        var redactor = new SecretRedactor();
+        var risk = new RiskDecision("BTCUSDT", "APPROVED", "Manual approval", DateTime.UtcNow, DateTime.UtcNow.AddMinutes(10), "BUY", 50000m, 0.1m);
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
         var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_REAL", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
 
-        var result = await executor.ExecuteOrderAsync(order);
+        var result = await executor.ExecuteOrderAsync(order, risk);
 
         Assert.Equal("REJECTED", result.Status);
         
         var failureLog = store.Logs.FirstOrDefault(l => l.Action == "BINANCE_TESTNET_FAILED");
         Assert.NotNull(failureLog);
-        Assert.Contains("fictícias ou inválidas", failureLog.Details);
+        Assert.Contains("invalidas", failureLog.Details);
         Assert.DoesNotContain("secret_to_redact", failureLog.Details);
     }
 
-    
     [Fact]
-    public async Task ExecuteOrderAsync_RiskValidationFails_RejectsOrder()
+    public async Task ExecuteOrderAsync_RiskDecisionMissing_RejectsOrder()
     {
         var store = new InMemoryFeatureStore();
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -208,17 +224,79 @@ public class BinanceTestnetTests
             { "Binance:Testnet:Enabled", "false" }
         }).Build();
 
-        var riskEngine = new MockRiskEngine { ShouldApprove = false };
-        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, riskEngine);
+        var redactor = new SecretRedactor();
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
         
-        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_RISK", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
+        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_RISK_MISSING", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
 
-        var result = await executor.ExecuteOrderAsync(order);
+        var result = await executor.ExecuteOrderAsync(order, null);
 
         Assert.Equal("REJECTED", result.Status);
-        Assert.Contains(store.Logs, l => l.Action == "RISK_VALIDATION_FAILED" && l.Status == "FAILED");
+        Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_MISSING" && l.Status == "FAILED");
     }
 
+    [Fact]
+    public async Task ExecuteOrderAsync_RiskDecisionRejected_RejectsOrder()
+    {
+        var store = new InMemoryFeatureStore();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            { "Binance:Testnet:Enabled", "false" }
+        }).Build();
+
+        var redactor = new SecretRedactor();
+        var risk = new RiskDecision("BTCUSDT", "REJECTED", "Risk limit reached", DateTime.UtcNow, DateTime.UtcNow.AddMinutes(10), "BUY", 50000m, 0.1m);
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
+        
+        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_RISK_REJ", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
+
+        var result = await executor.ExecuteOrderAsync(order, risk);
+
+        Assert.Equal("REJECTED", result.Status);
+        Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_REJECTED" && l.Status == "FAILED");
+    }
+
+    [Fact]
+    public async Task ExecuteOrderAsync_RiskDecisionExpired_RejectsOrder()
+    {
+        var store = new InMemoryFeatureStore();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            { "Binance:Testnet:Enabled", "false" }
+        }).Build();
+
+        var redactor = new SecretRedactor();
+        var risk = new RiskDecision("BTCUSDT", "APPROVED", "Manual approval", DateTime.UtcNow.AddMinutes(-20), DateTime.UtcNow.AddMinutes(-10), "BUY", 50000m, 0.1m);
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
+        
+        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_RISK_EXP", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
+
+        var result = await executor.ExecuteOrderAsync(order, risk);
+
+        Assert.Equal("REJECTED", result.Status);
+        Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_EXPIRED" && l.Status == "FAILED");
+    }
+
+    [Fact]
+    public async Task ExecuteOrderAsync_RiskDecisionMismatch_RejectsOrder()
+    {
+        var store = new InMemoryFeatureStore();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            { "Binance:Testnet:Enabled", "false" }
+        }).Build();
+
+        var redactor = new SecretRedactor();
+        var risk = new RiskDecision("ETHUSDT", "APPROVED", "Manual approval", DateTime.UtcNow, DateTime.UtcNow.AddMinutes(10), "BUY", 3500m, 1.0m);
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
+        
+        var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_RISK_MISMATCH", Side = "BUY", Type = "LIMIT", Price = 50000m, Quantity = 0.1m };
+
+        var result = await executor.ExecuteOrderAsync(order, risk);
+
+        Assert.Equal("REJECTED", result.Status);
+        Assert.Contains(store.Logs, l => l.Action == "RISK_DECISION_MISMATCH" && l.Status == "FAILED");
+    }
     
     [Fact(Skip = "Opt-in: Remova o Skip e coloque chaves reais da Testnet para rodar o teste na exchange real")]
     public async Task ExecuteOrderAsync_RealMode_WithValidCredentials_ShouldSucceed()
@@ -231,12 +309,13 @@ public class BinanceTestnetTests
             { "Binance:Testnet:ApiSecret", "YOUR_REAL_TESTNET_SECRET" }
         }).Build();
 
-        var riskEngine = new MockRiskEngine { ShouldApprove = true };
-        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, riskEngine);
+        var redactor = new SecretRedactor();
+        var risk = new RiskDecision("BTCUSDT", "APPROVED", "Manual approval", DateTime.UtcNow, DateTime.UtcNow.AddMinutes(10), "BUY", 40000m, 0.01m);
+        var executor = new BinanceTestnetExecutor(store, _validator, config, NullLogger<BinanceTestnetExecutor>.Instance, new MockRiskEngine(), redactor);
         
         var order = new TestnetOrder { Symbol = "BTCUSDT", ClientOrderId = "ORDER_REAL_OPT_IN", Side = "BUY", Type = "LIMIT", Price = 40000m, Quantity = 0.01m };
 
-        var result = await executor.ExecuteOrderAsync(order);
+        var result = await executor.ExecuteOrderAsync(order, risk);
 
         Assert.Equal("FILLED", result.Status);
     }

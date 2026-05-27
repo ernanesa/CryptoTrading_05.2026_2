@@ -20,6 +20,9 @@ public class Position
     public decimal? TakeProfitPrice { get; set; }
     public PositionState State { get; set; } = PositionState.Open;
     public bool IsClosed => State == PositionState.Closed;
+    /// <summary>Market regime active when trade was entered (set by BacktestEngine). Used for regime-performance breakdown.</summary>
+    public string Regime { get; set; } = string.Empty;
+
 
     public void UpdateUnrealizedPnL(decimal currentPrice)
     {

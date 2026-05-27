@@ -150,18 +150,21 @@ public class HardeningReportService
 {
     private readonly ChaosScenarioRunner _chaosRunner;
     private readonly BenchmarkCatalog _benchmarkCatalog;
+    private readonly RuntimeStatusService _runtimeStatus;
 
-    public HardeningReportService(ChaosScenarioRunner chaosRunner, BenchmarkCatalog benchmarkCatalog)
+    public HardeningReportService(ChaosScenarioRunner chaosRunner, BenchmarkCatalog benchmarkCatalog, RuntimeStatusService runtimeStatus)
     {
         _chaosRunner = chaosRunner;
         _benchmarkCatalog = benchmarkCatalog;
+        _runtimeStatus = runtimeStatus;
     }
 
     public HardeningReport Generate()
     {
         var benchmarks = _benchmarkCatalog.Build();
         var chaos = _chaosRunner.Run();
-        var gates = BuildGates(benchmarks, chaos);
+        var status = _runtimeStatus.GetStatus();
+        var gates = BuildGates(benchmarks, chaos, status);
         var risks = BuildKnownRisks();
 
         return new HardeningReport
@@ -171,15 +174,16 @@ public class HardeningReportService
             Benchmarks = benchmarks,
             ChaosScenarios = chaos,
             KnownRisks = risks,
-            Alerts = BuildAlerts(risks)
+            Alerts = BuildAlerts(risks, status.Warnings)
         };
     }
 
     private static List<HardeningGate> BuildGates(
         IReadOnlyList<BenchmarkRegistration> benchmarks,
-        IReadOnlyList<ChaosScenarioResult> chaos)
+        IReadOnlyList<ChaosScenarioResult> chaos,
+        RuntimeStatusDto status)
     {
-        return new List<HardeningGate>
+        var gates = new List<HardeningGate>
         {
             Passed("build limpo", "dotnet test compila todos os projetos antes de executar os testes."),
             Passed("testes limpos", "Suite xUnit deve passar integralmente no fechamento da atividade."),
@@ -198,8 +202,16 @@ public class HardeningReportService
                 Name = "chaos scenarios limpos",
                 Passed = chaos.All(c => c.Passed),
                 Evidence = $"{chaos.Count(c => c.Passed)}/{chaos.Count} chaos scenarios passed."
+            },
+            new()
+            {
+                Name = "runtime mode valido",
+                Passed = status.Warnings.Count == 0,
+                Evidence = $"Runtime Mode: {status.Mode}. System warnings: {status.Warnings.Count}."
             }
         };
+
+        return gates;
     }
 
     private static HardeningGate Passed(string name, string evidence)
@@ -249,8 +261,10 @@ public class HardeningReportService
         };
     }
 
-    private static List<string> BuildAlerts(IEnumerable<KnownRisk> risks)
+    private static List<string> BuildAlerts(IEnumerable<KnownRisk> risks, IEnumerable<string> runtimeWarnings)
     {
-        return risks.Select(r => $"{r.Area}: {r.Risk}").ToList();
+        var alerts = risks.Select(r => $"{r.Area}: {r.Risk}").ToList();
+        alerts.AddRange(runtimeWarnings);
+        return alerts;
     }
 }

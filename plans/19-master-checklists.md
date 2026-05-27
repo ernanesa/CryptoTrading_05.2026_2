@@ -10,11 +10,11 @@ Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 | M1 Market Data + Feature Store | 100% | Functional Prototype |
 | M2 Backtesting + Strategy Lab | 100% | Functional Prototype |
 | M3 Paper Trading + Risk | 100% | Functional Prototype |
-| M4 Binance Spot Testnet | 100% | Skeleton/Dry-run |
+| M4 Binance Spot Testnet | 100% | Completed |
 | M5 Dashboard + Observability | 100% | Functional Prototype |
 | M6 Intelligence Layer | 100% | Heuristic Prototype |
 | M7 Adaptive Strategy Orchestration | 100% | Heuristic Prototype |
-| M8 Hardening | 100% | Initial Hardening |
+| M8 Hardening | 100% | Completed |
 | M9 Validation & Reality Check | Completed | Completed |
 
 ## Checklist antes de qualquer atividade
@@ -22,7 +22,7 @@ Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 - [x] data atual verificada;
 - [x] plano consultado;
 - [x] RAG consultado quando necessário;
-- [ ] documentação oficial consultada quando aplicável;
+- [x] documentação oficial consultada quando aplicável;
 - [x] entrega de valor definida;
 - [x] critérios de aceite definidos;
 - [x] riscos listados;

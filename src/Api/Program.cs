@@ -63,6 +63,7 @@ builder.Services.AddSingleton<SecretRedactor>();
 builder.Services.AddSingleton<ChaosScenarioRunner>();
 builder.Services.AddSingleton<BenchmarkCatalog>();
 builder.Services.AddSingleton<HardeningReportService>();
+builder.Services.AddSingleton<RuntimeStatusService>();
 builder.Services.AddTransient<PaperTradeExecutor>();
 builder.Services.AddSingleton<ExchangeRuleValidator>();
 builder.Services.AddTransient<BinanceTestnetExecutor>();
@@ -91,6 +92,9 @@ app.MapHub<MetricsHub>("/hubs/metrics");
 
 // Endpoints REST de Observabilidade e Saúde
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
+
+app.MapGet("/api/runtime/status", (RuntimeStatusService statusService) => Results.Ok(statusService.GetStatus()))
+    .WithName("GetRuntimeStatus");
 
 app.MapGet("/api/metrics", (IMetricsService metrics) => Results.Ok(metrics.GetSnapshot()))
     .WithName("GetMetricsSnapshot");
