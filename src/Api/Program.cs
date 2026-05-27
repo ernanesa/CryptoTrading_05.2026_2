@@ -463,7 +463,7 @@ app.MapPost("/api/testnet/order", async (TestnetOrder order, BinanceTestnetExecu
     order.UpdatedAt = DateTime.UtcNow;
 
     var result = await executor.ExecuteOrderAsync(order);
-    return result.Status == "REJECTED" 
+    return result.Status == "REJECTED"
         ? Results.BadRequest(new { Message = "Ordem rejeitada.", Result = result })
         : Results.Ok(result);
 })
@@ -485,4 +485,49 @@ app.MapGet("/api/testnet/audits", async (IFeatureStore store, int limit = 100) =
 })
 .WithName("GetTestnetAudits");
 
+
+
+// 14. Adaptive Orchestration API
+app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest request, AdaptiveStrategyOrchestrator orchestrator, IFeatureStore store) =>
+{
+    // Load real metrics
+    foreach (var strategy in request.StrategyNames)
+    {
+        var metric = await store.GetStrategyPerformanceMetricAsync(strategy, request.Symbol, request.Interval, request.Intelligence.MarketRegime);
+        if (metric != null) request.RealMetrics[strategy] = metric;
+    }
+
+    // Load state
+    var state = await store.GetStrategyStateAsync(request.CurrentStrategyName ?? "None", request.Symbol);
+    if (state != null)
+    {
+        request.LastSwitchAt = state.CooldownUntil; // Note: simplified
+        request.PersistentAdvantageCycles = state.AdvantageCycles;
+    }
+
+    var decision = orchestrator.Decide(request);
+
+    // Save updated state
+    if (decision.ShouldSwitchStrategy)
+    {
+        await store.SaveStrategyStateAsync(new StrategyState
+        {
+            StrategyName = decision.CandidateStrategyName,
+            Symbol = decision.Symbol,
+            CooldownUntil = DateTime.UtcNow,
+            AdvantageCycles = 0,
+            LastUpdated = DateTime.UtcNow
+        });
+    }
+
+    return Results.Ok(new
+    {
+        ActiveStrategy = decision.ActiveStrategyName,
+        CandidateStrategy = decision.CandidateStrategyName,
+        StrategyScores = decision.StrategyScores,
+        Reasons = decision.Reasons,
+        Decision = decision
+    });
+})
+.WithName("AdaptiveOrchestrationDecide");
 app.Run();

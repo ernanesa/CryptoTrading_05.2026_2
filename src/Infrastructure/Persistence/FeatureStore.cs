@@ -437,4 +437,54 @@ public class FeatureStore : IFeatureStore
             WHERE symbol = @symbol AND status IN ('New', 'Open', 'PartiallyFilled')";
         return await conn.QueryAsync<PaperOrder>(sql, new { symbol });
     }
+
+    public async Task SaveStrategyPerformanceMetricAsync(StrategyPerformanceMetric metric)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        var sql = @"
+            INSERT INTO strategy_performance_metrics (strategy_name, symbol, timeframe, regime, win_rate, profit_factor, max_drawdown, consecutive_losses, slippage_tolerance, risk_rejections, last_updated)
+            VALUES (@StrategyName, @Symbol, @Timeframe, @Regime, @WinRate, @ProfitFactor, @MaxDrawdown, @ConsecutiveLosses, @SlippageTolerance, @RiskRejections, @LastUpdated)
+            ON CONFLICT (strategy_name, symbol, timeframe, regime)
+            DO UPDATE SET
+                win_rate = EXCLUDED.win_rate,
+                profit_factor = EXCLUDED.profit_factor,
+                max_drawdown = EXCLUDED.max_drawdown,
+                consecutive_losses = EXCLUDED.consecutive_losses,
+                slippage_tolerance = EXCLUDED.slippage_tolerance,
+                risk_rejections = EXCLUDED.risk_rejections,
+                last_updated = EXCLUDED.last_updated;
+        ";
+        await conn.ExecuteAsync(sql, metric);
+    }
+
+    public async Task<StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        var sql = "SELECT strategy_name AS StrategyName, symbol AS Symbol, timeframe AS Timeframe, regime AS Regime, win_rate AS WinRate, profit_factor AS ProfitFactor, max_drawdown AS MaxDrawdown, consecutive_losses AS ConsecutiveLosses, slippage_tolerance AS SlippageTolerance, risk_rejections AS RiskRejections, last_updated AS LastUpdated FROM strategy_performance_metrics WHERE strategy_name = @strategyName AND symbol = @symbol AND timeframe = @timeframe AND regime = @regime";
+        return await conn.QuerySingleOrDefaultAsync<StrategyPerformanceMetric>(sql, new { strategyName, symbol, timeframe, regime });
+    }
+
+    public async Task SaveStrategyStateAsync(StrategyState state)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        var sql = @"
+            INSERT INTO strategy_states (strategy_name, symbol, is_paused, cooldown_until, last_score, advantage_cycles, last_updated)
+            VALUES (@StrategyName, @Symbol, @IsPaused, @CooldownUntil, @LastScore, @AdvantageCycles, @LastUpdated)
+            ON CONFLICT (strategy_name, symbol)
+            DO UPDATE SET
+                is_paused = EXCLUDED.is_paused,
+                cooldown_until = EXCLUDED.cooldown_until,
+                last_score = EXCLUDED.last_score,
+                advantage_cycles = EXCLUDED.advantage_cycles,
+                last_updated = EXCLUDED.last_updated;
+        ";
+        await conn.ExecuteAsync(sql, state);
+    }
+
+    public async Task<StrategyState?> GetStrategyStateAsync(string strategyName, string symbol)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        var sql = "SELECT strategy_name AS StrategyName, symbol AS Symbol, is_paused AS IsPaused, cooldown_until AS CooldownUntil, last_score AS LastScore, advantage_cycles AS AdvantageCycles, last_updated AS LastUpdated FROM strategy_states WHERE strategy_name = @strategyName AND symbol = @symbol";
+        return await conn.QuerySingleOrDefaultAsync<StrategyState>(sql, new { strategyName, symbol });
+    }
 }

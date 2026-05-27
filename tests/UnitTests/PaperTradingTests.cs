@@ -87,7 +87,7 @@ public class PaperTradingTests
             return Task.FromResult(active);
         }
 
-        public Task ClearPaperTradingDataAsync()
+        public Task SaveStrategyPerformanceMetricAsync(CryptoTrading.Domain.Entities.StrategyPerformanceMetric metric) => Task.CompletedTask; public Task<CryptoTrading.Domain.Entities.StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime) => Task.FromResult<CryptoTrading.Domain.Entities.StrategyPerformanceMetric?>(null); public Task SaveStrategyStateAsync(CryptoTrading.Domain.Entities.StrategyState state) => Task.CompletedTask; public Task<CryptoTrading.Domain.Entities.StrategyState?> GetStrategyStateAsync(string strategyName, string symbol) => Task.FromResult<CryptoTrading.Domain.Entities.StrategyState?>(null); public Task ClearPaperTradingDataAsync()
         {
             Trades.Clear();
             Audits.Clear();

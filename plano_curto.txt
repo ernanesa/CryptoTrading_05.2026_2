@@ -1,10 +1,8 @@
-1. Atualizar schema BD para sortino/calmar.
-2. Adicionar Sortino/Calmar no BacktestReport e PerformanceAnalyzer.
-3. Atualizar BacktestRepository com novas colunas.
-4. Criar JSON e Markdown exporter para reports.
-5. Criar WalkForwardEngine (treino/val/teste janela móvel).
-6. Ajustar FeeModel/SlippageModel para ficarem mais robustos.
-7. Criar dataset fixo de teste na pasta tests/TestData.
-8. Expôr Endpoints na API.
-9. Adicionar testes unitários/integrados cobrindo os cenários e garantir que mesmos inputs = mesmos outputs.
-10. Commit.
+Plano Curto - Adaptive Real Metrics
+1. Consultar código e RAG sobre as classes (AdaptiveStrategyOrchestrator, etc).
+2. Criar tabelas e entidades StrategyPerformanceMetric e StrategyState para persistência no FeatureStore.
+3. Inserir RealMetrics e StrategyState no Request da Orquestração.
+4. Refatorar PerformanceTracker, HealthMonitor, AssetRanking, MultiArmedBandit e TradeAttribution para usar dados reais caso disponíveis.
+5. Expor nova rota na API (/api/orchestration/decide) para acessar a estratégia ativa, pontuações, health status e motivos de rejeição.
+6. Rodar testes unitários e o benchmark `AdaptiveStrategyOrchestrator.Decide`.
+7. Atualizar master-checklists.
