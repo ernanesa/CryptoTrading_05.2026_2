@@ -37,3 +37,9 @@
 | 2026-05-20 | Implementação completa da M8: Hardening — gates de qualidade, endpoint `/api/hardening/report`, redator de secrets, chaos scenarios, benchmarks registrados, riscos conhecidos e dashboard |
 | 2026-05-20 | Adicionado harness local de benchmarks em `tools/benchmarks/CryptoTrading.Benchmarks` para IndicatorService e AdaptiveStrategyOrchestrator, com cenários opt-in de FeatureStore e AOT |
 | 2026-05-20 | Adicionado workflow `hardening-gates.yml` para validar build, testes, dashboard e smoke benchmarks no CI |
+
+### Release Readiness Hardening (2026-05-27)
+- **CI/CD**: Separou gates obrigatórios (`ci.yml`) de gates opt-in (`hardening-gates.yml`).
+- **Dependencies**: Adicionada configuração do Dependabot para nuget, npm e github-actions.
+- **Security**: Criado `plans/30-release-readiness-report.md` com checklist de segurança e secrets documentados.
+- **Testing**: Confirmada validação da lógica de secret redaction nos logs via testes unitários.
