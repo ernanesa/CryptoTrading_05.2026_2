@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text;
 using CryptoTrading.Domain.Entities;
+using System.Globalization;
+using System.Linq;
 
 namespace CryptoTrading.Application.Services;
 
@@ -18,33 +20,33 @@ public static class ReportExporter
         sb.AppendLine();
         sb.AppendLine($"**Symbol:** {report.Symbol}");
         sb.AppendLine($"**Interval:** {report.Interval}");
-        sb.AppendLine($"**Period:** {report.StartTime:yyyy-MM-dd} to {report.EndTime:yyyy-MM-dd}");
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "**Period:** {0:yyyy-MM-dd} to {1:yyyy-MM-dd}", report.StartTime, report.EndTime));
         sb.AppendLine();
         sb.AppendLine("## Performance Summary");
-        sb.AppendLine($"- **Initial Capital:** {report.InitialCapital:C}");
-        sb.AppendLine($"- **Final Capital:** {report.FinalCapital:C}");
-        sb.AppendLine($"- **Total PnL:** {report.TotalPnL:C} ({report.TotalPnLPercent:F2}%)");
-        sb.AppendLine($"- **Total Fees:** {report.TotalFees:C}");
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Initial Capital:** {0:C}", report.InitialCapital));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Final Capital:** {0:C}", report.FinalCapital));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Total PnL:** {0:C} ({1:F2}%)", report.TotalPnL, report.TotalPnLPercent));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Total Fees:** {0:C}", report.TotalFees));
         sb.AppendLine();
         sb.AppendLine("## Trade Statistics");
         sb.AppendLine($"- **Total Trades:** {report.TotalTrades}");
         sb.AppendLine($"- **Winning / Losing:** {report.WinningTrades} / {report.LosingTrades}");
-        sb.AppendLine($"- **Win Rate:** {report.WinRate * 100:F2}%");
-        sb.AppendLine($"- **Profit Factor:** {report.ProfitFactor:F2}");
-        sb.AppendLine($"- **Expectancy:** {report.Expectancy:C}");
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Win Rate:** {0:F2}%", report.WinRate * 100));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Profit Factor:** {0:F2}", report.ProfitFactor));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Expectancy:** {0:C}", report.Expectancy));
         sb.AppendLine();
         sb.AppendLine("## Risk Metrics");
-        sb.AppendLine($"- **Max Drawdown:** {report.MaxDrawdown:C} ({report.MaxDrawdownPercent:F2}%)");
-        sb.AppendLine($"- **Sharpe Ratio:** {report.SharpeRatio:F2}");
-        sb.AppendLine($"- **Sortino Ratio:** {report.SortinoRatio:F2}");
-        sb.AppendLine($"- **Calmar Ratio:** {report.CalmarRatio:F2}");
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Max Drawdown:** {0:C} ({1:F2}%)", report.MaxDrawdown, report.MaxDrawdownPercent));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Sharpe Ratio:** {0:F2}", report.SharpeRatio));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Sortino Ratio:** {0:F2}", report.SortinoRatio));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Calmar Ratio:** {0:F2}", report.CalmarRatio));
         sb.AppendLine();
         sb.AppendLine("## Advanced Metrics");
-        sb.AppendLine($"- **Exposure Time:** {report.ExposureTimePercent:F2}%");
-        sb.AppendLine($"- **Average Holding Time:** {report.AvgHoldingTimeHours:F2} hours");
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Exposure Time:** {0:F2}%", report.ExposureTimePercent));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Average Holding Time:** {0:F2} hours", report.AvgHoldingTimeHours));
         sb.AppendLine($"- **Max Consecutive Losses:** {report.MaxConsecutiveLosses}");
-        sb.AppendLine($"- **Fee Impact:** {report.FeeImpactPercent:F2}%");
-        sb.AppendLine($"- **Slippage Impact:** {report.SlippageImpactPercent:F2}%");
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Fee Impact:** {0:F2}%", report.FeeImpactPercent));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "- **Slippage Impact:** {0:F2}%", report.SlippageImpactPercent));
         sb.AppendLine();
         if (report.RegimeBreakdown.Count > 0)
         {
@@ -54,7 +56,7 @@ public static class ReportExporter
 
             foreach (var regime in report.RegimeBreakdown.Values.OrderBy(r => r.Regime))
             {
-                sb.AppendLine($"| {regime.Regime} | {regime.Trades} | {regime.WinRate * 100:F2}% | {regime.PnL:F2} | {regime.AvgReturn:F2}% |");
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "| {0} | {1} | {2:F2}% | {3:F2} | {4:F2}% |", regime.Regime, regime.Trades, regime.WinRate * 100, regime.PnL, regime.AvgReturn));
             }
 
             sb.AppendLine();
@@ -65,7 +67,7 @@ public static class ReportExporter
         
         foreach (var t in report.Trades)
         {
-            sb.AppendLine($"| {t.EntryTime:yyyy-MM-dd HH:mm} | {t.ExitTime:yyyy-MM-dd HH:mm} | {t.Type} | {t.EntryPrice:F4} | {t.ExitPrice:F4} | {t.Quantity:F4} | {t.RealizedPnL:F2} | {t.FeesPaid:F2} |");
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "| {0:yyyy-MM-dd HH:mm} | {1:yyyy-MM-dd HH:mm} | {2} | {3:F4} | {4:F4} | {5:F4} | {6:F2} | {7:F2} |", t.EntryTime, t.ExitTime, t.Type, t.EntryPrice, t.ExitPrice, t.Quantity, t.RealizedPnL, t.FeesPaid));
         }
         
         return sb.ToString();
