@@ -4,18 +4,18 @@ Data-base: **2026-05-21 UTC-03 / America/Maceio**.
 
 ## Status macro
 
-| Fase | Status Real (M9) |
-|---|---|
-| M0 Foundation | Completed |
-| M1 Market Data + Feature Store | Functional Prototype |
-| M2 Backtesting + Strategy Lab | Functional Prototype |
-| M3 Paper Trading + Risk | Functional Prototype |
-| M4 Binance Spot Testnet | Skeleton/Dry-run |
-| M5 Dashboard + Observability | Functional Prototype |
-| M6 Intelligence Layer | Heuristic Prototype |
-| M7 Adaptive Strategy Orchestration | Heuristic Prototype |
-| M8 Hardening | Initial Hardening |
-| M9 Validation & Reality Check | In Progress |
+| Fase | Status Teórico (Feito) | Status Real (Validado M9) |
+|---|---|---|
+| M0 Foundation | 100% | Completed |
+| M1 Market Data + Feature Store | 100% | Functional Prototype |
+| M2 Backtesting + Strategy Lab | 100% | Functional Prototype |
+| M3 Paper Trading + Risk | 100% | Functional Prototype |
+| M4 Binance Spot Testnet | 100% | Skeleton/Dry-run |
+| M5 Dashboard + Observability | 100% | Functional Prototype |
+| M6 Intelligence Layer | 100% | Heuristic Prototype |
+| M7 Adaptive Strategy Orchestration | 100% | Heuristic Prototype |
+| M8 Hardening | 100% | Initial Hardening |
+| M9 Validation & Reality Check | In Progress | In Progress |
 
 ## Checklist antes de qualquer atividade
 
