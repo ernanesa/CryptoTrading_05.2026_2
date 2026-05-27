@@ -1,3 +1,4 @@
+using System;
 using CryptoTrading.Domain.Enums;
 
 namespace CryptoTrading.Domain.Entities;
@@ -13,17 +14,33 @@ public class Position
     public decimal? ExitPrice { get; set; }
     public DateTime? ExitTime { get; set; }
     public decimal RealizedPnL { get; set; }
+    public decimal UnrealizedPnL { get; set; }
     public decimal FeesPaid { get; set; }
     public decimal? StopLossPrice { get; set; }
     public decimal? TakeProfitPrice { get; set; }
-    public bool IsClosed { get; set; }
+    public PositionState State { get; set; } = PositionState.Open;
+    public bool IsClosed => State == PositionState.Closed;
+
+    public void UpdateUnrealizedPnL(decimal currentPrice)
+    {
+        if (IsClosed) return;
+        
+        if (Type == PositionType.Long)
+        {
+            UnrealizedPnL = (currentPrice - EntryPrice) * Quantity;
+        }
+        else
+        {
+            UnrealizedPnL = (EntryPrice - currentPrice) * Quantity;
+        }
+    }
 
     public void Close(decimal exitPrice, DateTime exitTime, decimal exitFee)
     {
         ExitPrice = exitPrice;
         ExitTime = exitTime;
         FeesPaid += exitFee;
-        IsClosed = true;
+        State = PositionState.Closed;
 
         if (Type == PositionType.Long)
         {
@@ -33,5 +50,29 @@ public class Position
         {
             RealizedPnL = (EntryPrice - exitPrice) * Quantity - FeesPaid;
         }
+        UnrealizedPnL = 0;
+    }
+    
+    public void PartiallyClose(decimal exitPrice, decimal closeQuantity, decimal exitFee)
+    {
+        if (closeQuantity >= Quantity)
+        {
+            Close(exitPrice, DateTime.UtcNow, exitFee);
+            return;
+        }
+        
+        FeesPaid += exitFee;
+        decimal pnl = 0;
+        if (Type == PositionType.Long)
+        {
+            pnl = (exitPrice - EntryPrice) * closeQuantity - exitFee;
+        }
+        else
+        {
+            pnl = (EntryPrice - exitPrice) * closeQuantity - exitFee;
+        }
+        RealizedPnL += pnl;
+        Quantity -= closeQuantity;
+        State = PositionState.PartiallyClosed;
     }
 }

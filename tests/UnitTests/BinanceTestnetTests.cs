@@ -1,3 +1,4 @@
+using CryptoTrading.Domain.Enums;
 using CryptoTrading.Application.Services;
 using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
@@ -16,6 +17,8 @@ public class BinanceTestnetTests
         public List<TestnetOrder> Orders { get; set; } = new();
         public List<TestnetAuditLog> Logs { get; set; } = new();
         public List<PaperTrade> Trades { get; set; } = new();
+        public List<PaperOrder> _orders { get; set; } = new();
+        private readonly List<WalletBalance> _balances = new();
         public List<DecisionAudit> Audits { get; set; } = new();
 
         public Task SaveCandlesAsync(IEnumerable<Candle> candles) => Task.CompletedTask;
@@ -32,6 +35,20 @@ public class BinanceTestnetTests
 
         public Task SaveDecisionAuditAsync(DecisionAudit audit) { Audits.Add(audit); return Task.CompletedTask; }
         public Task<IEnumerable<DecisionAudit>> GetDecisionAuditsAsync(int limit = 100) => Task.FromResult(Enumerable.Empty<DecisionAudit>());
+        public Task SavePaperOrderAsync(PaperOrder order)
+        {
+            if (order.Id == 0) order.Id = _orders.Count + 1;
+            var existing = _orders.FirstOrDefault(o => o.Id == order.Id);
+            if (existing != null) _orders.Remove(existing);
+            _orders.Add(order);
+            return Task.CompletedTask;
+        }
+        public Task<IEnumerable<PaperOrder>> GetActivePaperOrdersAsync(string symbol)
+        {
+            var active = _orders.Where(o => o.Symbol == symbol && (o.Status == OrderStatus.New || o.Status == OrderStatus.Open || o.Status == OrderStatus.PartiallyFilled));
+            return Task.FromResult(active);
+        }
+
         public Task ClearPaperTradingDataAsync() => Task.CompletedTask;
 
         public Task SaveExchangeFilterInfoAsync(ExchangeFilterInfo filter)
