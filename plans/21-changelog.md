@@ -2,9 +2,10 @@
 
 | Data | Alteração |
 |---|---|
+| 2026-05-27 | Task A Sync M9: M9, plano paralelo, README e master checklist sincronizados com o estado real; Testnet REST bridge e Dashboard RuntimeMode marcados como feitos; Paper events, adaptive aggregator, backtest persistence homologada, final report e opt-ins reais mantidos como pendencias |
 | 2026-05-27 | Rodada final P0/P1: ponte REST Testnet agora pre-valida `RiskDecision`, registra `DecisionAudit` e bloqueia antes do executor quando invalida; Paper Trading ganhou transicao `New -> Open`, PnL incremental em venda e testes de reconciliacao; Adaptive Orchestration passou a expor breakdown estruturado do score; readiness docs alinhadas a `ci.yml` obrigatorio e `hardening-gates.yml` opt-in |
 | 2026-05-27 | Task D/F: `context-pack` do RagTool passou a emitir objetivo, fontes, arquivos prováveis, riscos, testes, critérios e dependências; `optimize-input` ganhou `--profile` para Antigravity, Copilot, Code Review e Integration Agent; criados prompts salvos em `plans/prompts/`; relatórios Markdown de backtest agora incluem métricas avançadas e performance por regime |
-| 2026-05-27 | Task A: Revalidado M9 com RAG local e leitura do codigo; documentado que o executor Binance Testnet possui gate estrito de `RiskDecision`, mas a rota REST ainda precisa da ponte de decisao de risco, e que o `RuntimeMode` backend ainda deve ser consumido pelo dashboard como fonte canonica |
+| 2026-05-27 | Task A: Revalidado M9 com RAG local e leitura do codigo; registro original identificou pendencias na ponte REST Testnet e no consumo canonico de `RuntimeMode`, ambas posteriormente fechadas e supersedidas pela sincronizacao final de 2026-05-27 |
 | 2026-05-27 | Task A, B, C, D: Implementado e auditado o gate estrito Binance Testnet com RiskDecision, criado RuntimeMode global com seu endpoint REST e alertas integrados ao HardeningReportService, aprimorados os comandos context-pack e optimize-input do RagTool com suporte a coleções individuais e perfis Antigravity/Copilot, atualizados checklists e M9 Reality Check, e criada a guia planos/31 |
 | 2026-05-24 | Criação da Fase M9 (Validation & Reality Check) corrigindo status reais de maturidade das Fases M0-M8 e gerando backlog de hardenização |
 | 2026-05-21 | Status semântico dos benchmarks de hardening exposto pela API e exibido no dashboard com alertas operacionais |

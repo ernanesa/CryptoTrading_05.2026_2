@@ -31,31 +31,31 @@ Classificação das Fases (M0 a M8):
 
 ### M2: Backtesting + Strategy Lab
 *   **Status real**: Functional Prototype
-*   **Percentual estimado**: 75%
-*   **Evidências**: A `BacktestEngine` suporta taxa de corretagem e slippage. Os endpoints executam simulações rápidas.
-*   **Riscos/Desvios**: Faltam métricas essenciais como Sharpe e Sortino. O sistema não persiste `backtest_runs` e `backtest_trades` em banco, dificultando comparações no futuro.
-*   **Próximos gates**: Persistir reports de testes, adicionar métricas avançadas e walk-forward.
+*   **Percentual estimado**: 80%
+*   **Evidências**: A `BacktestEngine` suporta taxa de corretagem, slippage e métricas avançadas; existe base de persistência com `BacktestRepository` e tabelas `backtest_runs`/`backtest_trades`.
+*   **Riscos/Desvios**: A persistência de backtests ainda precisa ser comprovada como fluxo produto completo nos endpoints/relatórios e em gate de integração, evitando que o repositório exista sem trilha operacional homologada.
+*   **Próximos gates**: Homologar persistência ponta a ponta dos reports de backtest, validar leitura histórica/comparativa e adicionar walk-forward.
 
 ### M3: Paper Trading + Risk
 *   **Status real**: Functional Prototype
-*   **Percentual estimado**: 70%
-*   **Evidências**: O `RiskEngine` bloqueia ordens e gera `DecisionAudit`. Existe uma `paper_wallet` e tabela `paper_trades`.
-*   **Riscos/Desvios**: Não existe um State Machine rígido para evolução das ordens. Falta o reconciliation loop contínuo e acompanhamento de PnL não-realizado.
-*   **Próximos gates**: Implementar ordens parciais, State Machine rigoroso e controle de margem/exposure.
+*   **Percentual estimado**: 78%
+*   **Evidências**: O `RiskEngine` bloqueia ordens e gera `DecisionAudit`; existem `paper_wallet`, `paper_trades`, `paper_orders`, `paper_positions`, reconciliação `New -> Open`, PnL incremental de venda e PnL não-realizado em posição.
+*   **Riscos/Desvios**: Ainda falta uma trilha explícita de eventos de Paper Trading para auditar o ciclo de vida inteiro das ordens e publicar/reconciliar mudanças de estado como stream operacional.
+*   **Próximos gates**: Implementar eventos de Paper Trading, ordens parciais completas, State Machine rigoroso e controle de margem/exposure.
 
 ### M4: Binance Spot Testnet
 *   **Status real**: Functional Prototype com gate de risco estrito concluido
-*   **Percentual estimado**: 90%
-*   **Evidências**: `BinanceTestnetExecutor` usa `BinanceRestClient`, valida filtros locais da exchange, mascara secrets com `SecretRedactor` e rejeita ordens sem `RiskDecision` aprovado, vigente e compativel com simbolo/lado. A suite `BinanceTestnetTests` cobre ausencia, rejeicao, expiracao e mismatch de `RiskDecision`.
-*   **Riscos/Desvios**: O endpoint REST `/api/testnet/order` ainda chama `ExecuteOrderAsync(order)` sem fornecer `RiskDecision`; portanto, pelo estado real do codigo, a rota rejeita ordens pelo gate estrito ate existir a ponte entre RiskEngine/orquestrador e submissao Testnet. Em modo real tambem exige internet estavel, filtros oficiais persistidos e chaves validas.
-*   **Próximos gates**: Integrar a geracao/propagacao de `RiskDecision` ao endpoint Testnet, validar fluxo end-to-end opt-in com credenciais Testnet reais e manter a regra de nunca assumir `FILLED` no modo real.
+*   **Percentual estimado**: 95%
+*   **Evidências**: `BinanceTestnetExecutor` usa `BinanceRestClient`, valida filtros locais da exchange, mascara secrets com `SecretRedactor` e rejeita ordens sem `RiskDecision` aprovado, vigente e compativel com simbolo/lado. O endpoint REST `/api/testnet/order` recebe `RiskDecision`, pre-valida via `TestnetOrderSubmissionGuard`, registra `DecisionAudit` antes do executor e bloqueia submissao invalida.
+*   **Riscos/Desvios**: A ponte REST Testnet esta implementada, mas o fluxo end-to-end com credenciais reais da Binance Spot Testnet continua opt-in e dependente de internet estavel, filtros oficiais persistidos, chaves validas e auditoria de status real sem assumir `FILLED`.
+*   **Próximos gates**: Validar fluxo end-to-end opt-in com credenciais Testnet reais, registrar evidencias de sincronizacao de status e manter a regra de nunca assumir `FILLED` no modo real.
 
 ### M5: Dashboard + Observability
 *   **Status real**: Functional Prototype
-*   **Percentual estimado**: 85%
-*   **Evidências**: O Vite-React dashboard compila (`npm run build`) e se conecta via SignalR, plotando gráficos com TradingView Lightweight Charts. O backend ja expoe `/api/runtime/status` via `RuntimeStatusService`.
-*   **Riscos/Desvios**: O dashboard ainda deriva modo principalmente do estado de conexao local (`Testnet Real` versus `Simulation`) e nao consome o endpoint `/api/runtime/status` como fonte canonica para Offline, Simulation, Paper, TestnetDryRun e TestnetReal.
-*   **Próximos gates**: Consumir `/api/runtime/status`, exibir badge global de `RuntimeMode`, separar claramente Offline/Simulation/Paper/Testnet e expor tracing OpenTelemetry no React.
+*   **Percentual estimado**: 90%
+*   **Evidências**: O Vite-React dashboard compila (`npm run build`), se conecta via SignalR, plota gráficos com TradingView Lightweight Charts e consome `/api/runtime/status` via `apiService.fetchRuntimeStatus()`. O badge global de `RuntimeMode` reflete Offline, Simulation, Paper, TestnetDryRun e TestnetReal com fallback seguro para Simulation.
+*   **Riscos/Desvios**: O consumo canônico de `RuntimeMode` esta implementado, mas ainda faltam tracing OpenTelemetry no React e evidencias E2E reais em ambiente com backend ativo.
+*   **Próximos gates**: Rodar smoke Playwright opt-in contra backend real, reforcar tracing OpenTelemetry no React e revisar estados visuais de erro/latencia.
 
 ### M6: Intelligence Layer
 *   **Status real**: Heuristic Prototype
@@ -66,10 +66,10 @@ Classificação das Fases (M0 a M8):
 
 ### M7: Adaptive Strategy Orchestration
 *   **Status real**: Heuristic Prototype
-*   **Percentual estimado**: 60%
-*   **Evidências**: O Control Plane decide dinamicamente a alocação e realiza trocas baseadas em escores heurísticos.
-*   **Riscos/Desvios**: O Multi-Armed Bandit não usa os dados reais persistidos da Fase M2/M3 para o aprendizado e exploração. O cooldown e histerese operam em memória.
-*   **Próximos gates**: Usar persistência de métricas, cooldown no DB, e alimentar o Multi-Armed Bandit com histórico verdadeiro.
+*   **Percentual estimado**: 70%
+*   **Evidências**: O Control Plane decide dinamicamente a alocação, persiste estado/cooldown de estratégia e expõe breakdown estruturado do score.
+*   **Riscos/Desvios**: Ainda falta um agregador adaptativo real que consolide eventos de trades, atribuições, métricas persistidas de M2/M3 e exploração do Multi-Armed Bandit em histórico verdadeiro.
+*   **Próximos gates**: Implementar agregador adaptativo, alimentar o Multi-Armed Bandit com histórico verdadeiro e validar aprendizado usando eventos persistidos.
 
 ### M8: Hardening
 *   **Status real**: Completed
@@ -83,18 +83,18 @@ Classificação das Fases (M0 a M8):
 RAG consultado:
 
 ```bash
-dotnet run --project tools/CryptoTrading.RagTool -- context-pack "M9 reality check Binance RiskDecision RuntimeMode RAG context-pack release readiness"
-dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "Atualizar M9 com estado real do projeto"
+dotnet run --project tools/CryptoTrading.RagTool -- context-pack "M9 reality check RuntimeMode Testnet REST bridge Paper Adaptive Readiness"
+dotnet run --project tools/CryptoTrading.RagTool -- optimize-input "Sincronizar M9 e plano paralelo com estado real" --profile code-review
 ```
 
-Arquivos de codigo conferidos: `BinanceTestnetExecutor`, `RuntimeStatusService`, `RuntimeMode`, `HardeningReportService`, endpoint `/api/runtime/status`, endpoint `/api/testnet/order`, `BinanceTestnetTests` e dashboard `App.tsx`/store.
+Arquivos de codigo conferidos: `src/Api/Program.cs`, `dashboard/src/App.tsx`, `dashboard/src/services.ts`, `src/Application/Services/TestnetOrderSubmissionGuard.cs`, `BacktestRepository`, migracoes de Paper/Adaptive e `plans/30-release-readiness-report.md`.
 
-Conclusao: Tasks B, C e D existem no codigo, mas a maturidade M9 deve preservar a diferenca entre componentes implementados e fluxo produto end-to-end. O gate `RiskDecision` da Testnet esta correto e restritivo; a rota REST de submissao ainda precisa receber uma decisao de risco valida para executar. O `RuntimeMode` existe no backend e no store do dashboard, mas o dashboard ainda precisa usar o endpoint canonico como fonte de verdade.
+Conclusao: Testnet REST bridge e Dashboard RuntimeMode estao implementados no codigo e devem ser marcados como feitos. A maturidade M9 ainda deve preservar a diferenca entre componentes implementados e fluxo produto end-to-end: Paper events, agregador adaptativo, persistencia de backtest homologada, relatorio final de readiness e opt-ins reais continuam pendentes ou pendentes de evidencia operacional.
 
 ## Próximos Passos (Backlog de Execução)
 Para tornar o projeto **Production-Ready** em termos técnicos (sem ainda engajar capital real), seguiremos a trilha:
-1.  Implementar State Machine e PnL não realizado no Paper Trading (`4.4`).
-2.  Tornar o backtesting persistente com novas métricas avançadas (`4.3`).
-3.  Fazer a orquestração adaptativa usar os dados históricos via Multi-Armed Bandit (`4.5`).
-4.  Conectar o endpoint Testnet ao `RiskDecision` emitido pelo RiskEngine/orquestrador antes de qualquer submissao real.
-5.  Adequar o Dashboard para refletir claramente o modo de operação (`RuntimeMode`) e as métricas expandidas (`4.7`).
+1.  Consolidar State Machine e PnL não realizado com eventos auditaveis no ciclo de vida do Paper Trading (`4.4`).
+2.  Publicar/reconciliar eventos de ordens Paper para auditoria operacional.
+3.  Homologar a persistencia de backtests com fluxo produto e comparacao historica (`4.3`).
+4.  Fazer a orquestração adaptativa usar agregador persistido e dados históricos via Multi-Armed Bandit (`4.5`).
+5.  Finalizar o relatório de readiness com evidencias de opt-ins reais: Testnet real, Playwright, Testcontainers, FeatureStore benchmark e Native AOT quando aplicavel.

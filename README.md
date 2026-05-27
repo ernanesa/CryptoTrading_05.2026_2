@@ -70,7 +70,7 @@ M8 Hardening
 M9 Validation & Reality Check
 ```
 
-Status atual: **M0 a M9 reavaliados e consolidados** na nova fase de refinamento M9, com a integracao real na Binance Spot Testnet, barreira restrita de `RiskDecision` (M4), status de `RuntimeMode` global (M8), e ferramentas RAG enriquecidas concluídas. Detalhes em [`plans/27-stage-09-validation-reality-check.md`](./plans/27-stage-09-validation-reality-check.md).
+Status atual: **M0 a M9 reavaliados e consolidados** na nova fase de refinamento M9. Estao feitos: barreira restrita de `RiskDecision` e ponte REST da Binance Spot Testnet (M4), `RuntimeMode` global consumido pelo dashboard (M5/M8) e ferramentas RAG enriquecidas. Permanecem pendentes como trabalho real: eventos de Paper Trading, agregador adaptativo persistido, persistencia de backtest homologada no fluxo produto, relatorio final de readiness com evidencias e execucao registrada dos opt-ins reais. Detalhes em [`plans/27-stage-09-validation-reality-check.md`](./plans/27-stage-09-validation-reality-check.md).
 
 Benchmarks locais:
 
@@ -138,7 +138,7 @@ Esses repositórios são apenas leitura para este ciclo.
 - Adicionado integração Real com Binance Testnet (opcional, protegido por RiskEngine)
 
 ## Observability & Real State
-O dashboard foi refatorado para ter um controle global de estado (Offline, Simulation, Paper, Testnet).
+O dashboard foi refatorado para consumir `/api/runtime/status` como fonte canonica de estado global (Offline, Simulation, Paper, TestnetDryRun, TestnetReal), com fallback seguro para Simulation quando a API nao esta disponivel.
 Foi adicionada telemetria com OpenTelemetry no backend (.NET) para exportação de métricas Prometheus.
 Você pode rodar Prometheus e Grafana localmente usando:
 `docker-compose up -d`

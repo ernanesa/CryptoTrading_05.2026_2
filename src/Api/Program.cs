@@ -56,6 +56,7 @@ builder.Services.AddSingleton<DynamicPositionSizingService>();
 builder.Services.AddSingleton<DynamicExitEngine>();
 builder.Services.AddSingleton<TradeAttributionService>();
 builder.Services.AddSingleton<WalkForwardEvaluator>();
+builder.Services.AddSingleton<AdaptiveMetricsAggregator>();
 builder.Services.AddSingleton<AdaptiveFeedbackStateProjector>();
 builder.Services.AddSingleton<AdaptiveStrategyOrchestrator>();
 builder.Services.AddSingleton<DatasetBuilderService>();
@@ -173,6 +174,49 @@ app.MapGet("/api/adaptive/recommendation", async (
 })
 .WithName("GetAdaptiveRecommendation");
 
+app.MapGet("/api/adaptive/metrics/breakdown", async (
+    string strategyName,
+    string symbol,
+    string interval,
+    string regime,
+    AdaptiveMetricsAggregator aggregator,
+    int minimumSamples = 5) =>
+{
+    var breakdown = await aggregator.BuildBreakdownAsync(
+        strategyName,
+        symbol,
+        interval,
+        regime,
+        new AdaptiveMetricsAggregationOptions { MinimumEvidenceSamples = minimumSamples });
+
+    return Results.Ok(breakdown);
+})
+.WithName("GetAdaptiveMetricsBreakdown");
+
+app.MapPost("/api/adaptive/metrics/refresh", async (
+    string symbol,
+    string interval,
+    string regime,
+    StrategyRegistry registry,
+    AdaptiveMetricsAggregator aggregator,
+    string? strategyName,
+    int minimumSamples = 5) =>
+{
+    var strategyNames = string.IsNullOrWhiteSpace(strategyName)
+        ? registry.GetAll().Select(s => s.Name).ToList()
+        : new List<string> { strategyName };
+
+    var breakdowns = await aggregator.AggregateAndPersistAsync(
+        strategyNames,
+        symbol,
+        interval,
+        regime,
+        new AdaptiveMetricsAggregationOptions { MinimumEvidenceSamples = minimumSamples });
+
+    return Results.Ok(breakdowns);
+})
+.WithName("RefreshAdaptiveMetrics");
+
 // 1. Listar todas as estratégias registradas
 app.MapGet("/api/strategies", (StrategyRegistry registry) =>
 {
@@ -275,7 +319,16 @@ app.MapGet("/api/backtest/run-all", async (
             InitialCapital = report.InitialCapital,
             FinalCapital = report.FinalCapital,
             TotalPnL = report.TotalPnL,
-            TotalPnLPercent = report.TotalPnLPercent
+            TotalPnLPercent = report.TotalPnLPercent,
+            SharpeRatio = report.SharpeRatio,
+            SortinoRatio = report.SortinoRatio,
+            CalmarRatio = report.CalmarRatio,
+            ExposureTimePercent = report.ExposureTimePercent,
+            AvgHoldingTimeHours = report.AvgHoldingTimeHours,
+            MaxConsecutiveLosses = report.MaxConsecutiveLosses,
+            FeeImpactPercent = report.FeeImpactPercent,
+            SlippageImpactPercent = report.SlippageImpactPercent,
+            RegimeBreakdown = report.RegimeBreakdown
         });
     }
 
@@ -347,6 +400,27 @@ app.MapGet("/api/backtest/reports/latest", async (IBacktestRepository backtestRe
     return report != null ? Results.Ok(report) : Results.NotFound();
 })
 .WithName("GetLatestBacktestReport");
+
+app.MapGet("/api/backtest/reports/latest/export", async (
+    IBacktestRepository backtestRepo,
+    string strategy,
+    string symbol,
+    string format = "json") =>
+{
+    var report = await backtestRepo.GetLatestReportAsync(strategy, symbol);
+    if (report == null)
+    {
+        return Results.NotFound();
+    }
+
+    return format.ToLowerInvariant() switch
+    {
+        "md" or "markdown" => Results.Text(ReportExporter.ToMarkdown(report), "text/markdown; charset=utf-8"),
+        "json" => Results.Text(ReportExporter.ToJson(report), "application/json; charset=utf-8"),
+        _ => Results.BadRequest(new { Message = "Formato inválido. Use 'json' ou 'markdown'." })
+    };
+})
+.WithName("ExportLatestBacktestReport");
 
 app.MapGet("/api/paper/wallet", async (IFeatureStore store) =>
 {
@@ -521,12 +595,23 @@ app.MapGet("/api/testnet/audits", async (IFeatureStore store, int limit = 100) =
 
 
 // 14. Adaptive Orchestration API
-app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest request, AdaptiveStrategyOrchestrator orchestrator, AdaptiveFeedbackStateProjector feedbackState, IFeatureStore store) =>
+app.MapPost("/api/orchestration/decide", async (AdaptiveOrchestrationRequest request, AdaptiveStrategyOrchestrator orchestrator, AdaptiveFeedbackStateProjector feedbackState, AdaptiveMetricsAggregator metricsAggregator, IFeatureStore store) =>
 {
+    var metricSymbol = request.Symbol.ToUpperInvariant();
+    var metricInterval = string.IsNullOrWhiteSpace(request.Interval) ? "unknown" : request.Interval;
+    var metricRegime = string.IsNullOrWhiteSpace(request.Intelligence.MarketRegime) ? "Unknown" : request.Intelligence.MarketRegime;
+
+    await metricsAggregator.AggregateAndPersistAsync(
+        request.StrategyNames,
+        metricSymbol,
+        metricInterval,
+        metricRegime,
+        new AdaptiveMetricsAggregationOptions());
+
     // Load real metrics
     foreach (var strategy in request.StrategyNames)
     {
-        var metric = await store.GetStrategyPerformanceMetricAsync(strategy, request.Symbol, request.Interval, request.Intelligence.MarketRegime);
+        var metric = await store.GetStrategyPerformanceMetricAsync(strategy, metricSymbol, metricInterval, metricRegime);
         if (metric != null) request.RealMetrics[strategy] = metric;
     }
 

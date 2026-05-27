@@ -313,6 +313,8 @@ public class FeatureStore : IFeatureStore
     public async Task ClearPaperTradingDataAsync()
     {
         const string sql = @"
+        DELETE FROM paper_order_events;
+        DELETE FROM paper_orders;
         DELETE FROM paper_trades; 
         DELETE FROM decision_audits; 
         UPDATE paper_wallet SET free = 10000.0, locked = 0.0, updated_at = NOW();";
@@ -418,7 +420,7 @@ public class FeatureStore : IFeatureStore
                 INSERT INTO paper_orders (symbol, client_order_id, side, type, price, quantity, filled_quantity, average_fill_price, fee_paid, status, created_at, updated_at)
                 VALUES (@Symbol, @ClientOrderId, @Side, @TypeStr, @Price, @Quantity, @FilledQuantity, @AverageFillPrice, @FeePaid, @StatusStr, @CreatedAt, @UpdatedAt)
                 RETURNING id;";
-            order.Id = await conn.ExecuteScalarAsync<long>(sql, new { order.Symbol, order.ClientOrderId, order.Side, TypeStr = order.Type.ToString(), order.Price, order.Quantity, order.FilledQuantity, order.AverageFillPrice, order.FeePaid, StatusStr = order.Status.ToString(), order.CreatedAt, UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow });
+            order.Id = await conn.ExecuteScalarAsync<long>(sql, new { order.Symbol, order.ClientOrderId, order.Side, TypeStr = order.Type.ToString(), order.Price, order.Quantity, order.FilledQuantity, order.AverageFillPrice, order.FeePaid, StatusStr = order.Status.ToString(), order.CreatedAt, UpdatedAt = order.UpdatedAt ?? order.CreatedAt });
         }
         else
         {
@@ -426,7 +428,7 @@ public class FeatureStore : IFeatureStore
                 UPDATE paper_orders
                 SET filled_quantity = @FilledQuantity, average_fill_price = @AverageFillPrice, fee_paid = @FeePaid, status = @StatusStr, updated_at = @UpdatedAt
                 WHERE id = @Id;";
-            await conn.ExecuteAsync(sql, new { order.Id, order.FilledQuantity, order.AverageFillPrice, order.FeePaid, StatusStr = order.Status.ToString(), UpdatedAt = DateTime.UtcNow });
+            await conn.ExecuteAsync(sql, new { order.Id, order.FilledQuantity, order.AverageFillPrice, order.FeePaid, StatusStr = order.Status.ToString(), UpdatedAt = order.UpdatedAt ?? DateTime.UtcNow });
         }
     }
 
@@ -434,9 +436,51 @@ public class FeatureStore : IFeatureStore
     {
         await using var conn = await _dataSource.OpenConnectionAsync();
         const string sql = @"
-            SELECT * FROM paper_orders 
+            SELECT id, symbol, client_order_id AS ClientOrderId, side, type, price, quantity,
+                   filled_quantity AS FilledQuantity, average_fill_price AS AverageFillPrice,
+                   fee_paid AS FeePaid, status, created_at AS CreatedAt, updated_at AS UpdatedAt
+            FROM paper_orders
             WHERE symbol = @symbol AND status IN ('New', 'Open', 'PartiallyFilled')";
         return await conn.QueryAsync<PaperOrder>(sql, new { symbol });
+    }
+
+    public async Task SavePaperOrderEventAsync(PaperOrderEvent orderEvent)
+    {
+        const string sql = @"
+            INSERT INTO paper_order_events (paper_order_id, client_order_id, symbol, from_status, to_status, event_type, reason, fill_quantity, fill_price, fee, created_at)
+            VALUES (@PaperOrderId, @ClientOrderId, @Symbol, @FromStatusStr, @ToStatusStr, @EventType, @Reason, @FillQuantity, @FillPrice, @Fee, @CreatedAt)
+            RETURNING id;";
+
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        orderEvent.Id = await conn.ExecuteScalarAsync<long>(sql, new
+        {
+            orderEvent.PaperOrderId,
+            orderEvent.ClientOrderId,
+            orderEvent.Symbol,
+            FromStatusStr = orderEvent.FromStatus?.ToString(),
+            ToStatusStr = orderEvent.ToStatus.ToString(),
+            orderEvent.EventType,
+            orderEvent.Reason,
+            orderEvent.FillQuantity,
+            orderEvent.FillPrice,
+            orderEvent.Fee,
+            orderEvent.CreatedAt
+        });
+    }
+
+    public async Task<IEnumerable<PaperOrderEvent>> GetPaperOrderEventsAsync(long paperOrderId)
+    {
+        const string sql = @"
+            SELECT id, paper_order_id AS PaperOrderId, client_order_id AS ClientOrderId, symbol,
+                   from_status AS FromStatus, to_status AS ToStatus, event_type AS EventType,
+                   reason, fill_quantity AS FillQuantity, fill_price AS FillPrice, fee,
+                   created_at AS CreatedAt
+            FROM paper_order_events
+            WHERE paper_order_id = @paperOrderId
+            ORDER BY created_at ASC, id ASC;";
+
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        return await conn.QueryAsync<PaperOrderEvent>(sql, new { paperOrderId });
     }
 
     public async Task SaveStrategyPerformanceMetricAsync(StrategyPerformanceMetric metric)

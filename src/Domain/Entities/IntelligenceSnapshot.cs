@@ -21,6 +21,8 @@ public class IntelligenceSnapshot
     public EventRiskSnapshot EventRisk { get; set; } = new();
     public RagContextSnapshot RagContext { get; set; } = new();
     public ExplanationSnapshot Explanation { get; set; } = new();
+    public FeatureSchemaVersion FeatureSchema { get; set; } = new();
+    public ShadowModelOutput ShadowOutput { get; set; } = new();
     public List<RegisteredModelInfo> RegisteredModels { get; set; } = new();
     public bool HasAnomaly { get; set; }
     public List<string> Insights { get; set; } = new();

@@ -1,4 +1,5 @@
 using CryptoTrading.Application.Services;
+using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
 using CryptoTrading.Domain.Enums;
 
@@ -157,6 +158,93 @@ public class AdaptiveOrchestrationTests
         Assert.Equal(83m, projected.LastScore);
     }
 
+    [Fact]
+    public async Task MetricsAggregator_PersistsMetricWhenEvidenceMeetsMinimumWindow()
+    {
+        var now = DateTime.UtcNow;
+        var store = new AggregatorFeatureStore
+        {
+            Trades =
+            {
+                new() { Symbol = "BTCUSDT", Type = "SELL", PnL = 10m, ExecutedAt = now.AddMinutes(1) },
+                new() { Symbol = "BTCUSDT", Type = "SELL", PnL = -5m, ExecutedAt = now.AddMinutes(2) },
+                new() { Symbol = "BTCUSDT", Type = "SELL", PnL = 15m, ExecutedAt = now.AddMinutes(3) }
+            },
+            Audits =
+            {
+                new() { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", Decision = "APPROVED", Timestamp = now.AddMinutes(1) },
+                new() { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", Decision = "APPROVED", Timestamp = now.AddMinutes(2) },
+                new() { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", Decision = "APPROVED", Timestamp = now.AddMinutes(3) },
+                new() { Symbol = "BTCUSDT", StrategyName = "EMA Trend Following", Decision = "REJECTED", Timestamp = now.AddMinutes(4) }
+            }
+        };
+        var backtests = new AggregatorBacktestRepository
+        {
+            Reports =
+            {
+                new()
+                {
+                    StrategyName = "EMA Trend Following",
+                    Symbol = "BTCUSDT",
+                    Interval = "1m",
+                    TotalTrades = 2,
+                    WinningTrades = 1,
+                    LosingTrades = 1,
+                    ProfitFactor = 2m,
+                    MaxDrawdownPercent = 4m,
+                    MaxConsecutiveLosses = 1,
+                    SlippageImpactPercent = 0.03m
+                }
+            }
+        };
+        var aggregator = new AdaptiveMetricsAggregator(store, backtests);
+
+        var breakdown = await aggregator.AggregateAndPersistAsync(
+            "EMA Trend Following",
+            "btcusdt",
+            "1m",
+            "TrendingUp",
+            new AdaptiveMetricsAggregationOptions { MinimumEvidenceSamples = 5 });
+
+        Assert.True(breakdown.HasMinimumEvidence);
+        Assert.Equal(6, breakdown.EvidenceSamples);
+        Assert.Equal(2, breakdown.BacktestSamples);
+        Assert.Equal(3, breakdown.PaperTradeSamples);
+        Assert.Equal(0.6000m, breakdown.Metric.WinRate);
+        Assert.Equal(1, breakdown.Metric.RiskRejections);
+        Assert.Single(store.SavedMetrics);
+    }
+
+    [Fact]
+    public async Task MetricsAggregator_DoesNotPersistWhenMinimumWindowIsMissing()
+    {
+        var store = new AggregatorFeatureStore
+        {
+            Audits =
+            {
+                new()
+                {
+                    Symbol = "BTCUSDT",
+                    StrategyName = "ATR Breakout",
+                    Decision = "REJECTED",
+                    Timestamp = DateTime.UtcNow
+                }
+            }
+        };
+        var aggregator = new AdaptiveMetricsAggregator(store, new AggregatorBacktestRepository());
+
+        var breakdown = await aggregator.AggregateAndPersistAsync(
+            "ATR Breakout",
+            "BTCUSDT",
+            "1m",
+            "HighVolatility",
+            new AdaptiveMetricsAggregationOptions { MinimumEvidenceSamples = 3 });
+
+        Assert.False(breakdown.HasMinimumEvidence);
+        Assert.Equal(1, breakdown.EvidenceSamples);
+        Assert.Empty(store.SavedMetrics);
+    }
+
     private static AdaptiveOrchestrationRequest CreateRequest(IntelligenceSnapshot intelligence)
     {
         return new AdaptiveOrchestrationRequest
@@ -208,5 +296,60 @@ public class AdaptiveOrchestrationTests
                 CalculatedAt = start.AddMinutes(i)
             })
             .ToList();
+    }
+
+    private sealed class AggregatorBacktestRepository : IBacktestRepository
+    {
+        public List<BacktestReport> Reports { get; set; } = new();
+
+        public Task SaveReportAsync(BacktestReport report)
+        {
+            Reports.Add(report);
+            return Task.CompletedTask;
+        }
+
+        public Task<IEnumerable<BacktestReport>> GetReportsAsync(int limit = 50) =>
+            Task.FromResult<IEnumerable<BacktestReport>>(Reports.Take(limit));
+
+        public Task<BacktestReport?> GetLatestReportAsync(string strategyName, string symbol) =>
+            Task.FromResult(Reports.LastOrDefault(r =>
+                r.StrategyName.Equals(strategyName, StringComparison.OrdinalIgnoreCase)
+                && r.Symbol.Equals(symbol, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private sealed class AggregatorFeatureStore : IFeatureStore
+    {
+        public List<PaperTrade> Trades { get; set; } = new();
+        public List<DecisionAudit> Audits { get; set; } = new();
+        public List<StrategyPerformanceMetric> SavedMetrics { get; set; } = new();
+
+        public Task SaveCandlesAsync(IEnumerable<Candle> candles) => Task.CompletedTask;
+        public Task SaveFeaturesAsync(IEnumerable<CandleFeature> features) => Task.CompletedTask;
+        public Task<DateTime?> GetLastCandleTimeAsync(string symbol, string interval) => Task.FromResult<DateTime?>(null);
+        public Task<IEnumerable<MarketDataPoint>> GetMarketDataPointsAsync(string symbol, string interval, DateTime startTime, DateTime endTime) => Task.FromResult(Enumerable.Empty<MarketDataPoint>());
+        public Task SaveWalletBalanceAsync(WalletBalance balance) => Task.CompletedTask;
+        public Task<IEnumerable<WalletBalance>> GetWalletBalancesAsync() => Task.FromResult(Enumerable.Empty<WalletBalance>());
+        public Task SavePaperTradeAsync(PaperTrade trade) { Trades.Add(trade); return Task.CompletedTask; }
+        public Task<IEnumerable<PaperTrade>> GetPaperTradesAsync(string symbol, int limit = 100) => Task.FromResult<IEnumerable<PaperTrade>>(Trades.Where(t => t.Symbol.Equals(symbol, StringComparison.OrdinalIgnoreCase)).OrderByDescending(t => t.ExecutedAt).Take(limit));
+        public Task SavePaperPositionAsync(Position position) => Task.CompletedTask;
+        public Task<Position?> GetActivePaperPositionAsync(string symbol) => Task.FromResult<Position?>(null);
+        public Task SavePaperOrderAsync(PaperOrder order) => Task.CompletedTask;
+        public Task<IEnumerable<PaperOrder>> GetActivePaperOrdersAsync(string symbol) => Task.FromResult(Enumerable.Empty<PaperOrder>());
+        public Task SavePaperOrderEventAsync(PaperOrderEvent orderEvent) => Task.CompletedTask;
+        public Task<IEnumerable<PaperOrderEvent>> GetPaperOrderEventsAsync(long paperOrderId) => Task.FromResult(Enumerable.Empty<PaperOrderEvent>());
+        public Task SaveDecisionAuditAsync(DecisionAudit audit) { Audits.Add(audit); return Task.CompletedTask; }
+        public Task<IEnumerable<DecisionAudit>> GetDecisionAuditsAsync(int limit = 100) => Task.FromResult<IEnumerable<DecisionAudit>>(Audits.OrderByDescending(a => a.Timestamp).Take(limit));
+        public Task ClearPaperTradingDataAsync() { Trades.Clear(); Audits.Clear(); return Task.CompletedTask; }
+        public Task SaveExchangeFilterInfoAsync(ExchangeFilterInfo filter) => Task.CompletedTask;
+        public Task<ExchangeFilterInfo?> GetExchangeFilterInfoAsync(string symbol) => Task.FromResult<ExchangeFilterInfo?>(null);
+        public Task SaveTestnetOrderAsync(TestnetOrder order) => Task.CompletedTask;
+        public Task<TestnetOrder?> GetTestnetOrderAsync(string clientOrderId) => Task.FromResult<TestnetOrder?>(null);
+        public Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync() => Task.FromResult(Enumerable.Empty<TestnetOrder>());
+        public Task SaveTestnetAuditLogAsync(TestnetAuditLog log) => Task.CompletedTask;
+        public Task<IEnumerable<TestnetAuditLog>> GetTestnetAuditLogsAsync(int limit = 100) => Task.FromResult(Enumerable.Empty<TestnetAuditLog>());
+        public Task SaveStrategyPerformanceMetricAsync(StrategyPerformanceMetric metric) { SavedMetrics.Add(metric); return Task.CompletedTask; }
+        public Task<StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime) => Task.FromResult(SavedMetrics.LastOrDefault(m => m.StrategyName.Equals(strategyName, StringComparison.OrdinalIgnoreCase) && m.Symbol.Equals(symbol, StringComparison.OrdinalIgnoreCase) && m.Timeframe.Equals(timeframe, StringComparison.OrdinalIgnoreCase) && m.Regime.Equals(regime, StringComparison.OrdinalIgnoreCase)));
+        public Task SaveStrategyStateAsync(StrategyState state) => Task.CompletedTask;
+        public Task<StrategyState?> GetStrategyStateAsync(string strategyName, string symbol) => Task.FromResult<StrategyState?>(null);
     }
 }

@@ -1,6 +1,7 @@
 using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
 using CryptoTrading.Domain.Enums;
+using CryptoTrading.Domain.Services;
 
 namespace CryptoTrading.Application.Services;
 
@@ -159,6 +160,7 @@ public class PaperTradeExecutor
             };
             
             await _store.SavePaperOrderAsync(order);
+            await _store.SavePaperOrderEventAsync(PaperOrderStateMachine.Created(order, order.CreatedAt));
             audit.Reason = $"ORDEM CADASTRADA (COMPRA): {quantity:F4} {baseAssetSymbol} a Mercado";
         }
         else if (signal.Type == TradeSignalType.Exit || signal.Type == TradeSignalType.Sell)
@@ -186,6 +188,7 @@ public class PaperTradeExecutor
             };
             
             await _store.SavePaperOrderAsync(order);
+            await _store.SavePaperOrderEventAsync(PaperOrderStateMachine.Created(order, order.CreatedAt));
             audit.Reason = $"ORDEM CADASTRADA (VENDA): {quantity:F4} {baseAssetSymbol} a Mercado";
         }
         else
@@ -215,9 +218,10 @@ public class PaperTradeExecutor
 
             if (order.Status == OrderStatus.New)
             {
-                order.Status = OrderStatus.Open;
-                order.UpdatedAt = DateTime.UtcNow;
+                var acceptedAt = DateTime.UtcNow;
+                var acceptedEvent = PaperOrderStateMachine.Activate(order, acceptedAt);
                 await _store.SavePaperOrderAsync(order);
+                await _store.SavePaperOrderEventAsync(acceptedEvent);
             }
 
             // Simple limit order matching:
@@ -258,22 +262,10 @@ public class PaperTradeExecutor
 
                 var realizedBeforeFill = activePosition?.RealizedPnL ?? 0m;
 
-                order.FilledQuantity += fillQty;
-                order.AverageFillPrice = ((order.AverageFillPrice * (order.FilledQuantity - fillQty)) + (fillPrice * fillQty)) / order.FilledQuantity;
-                order.FeePaid += fee;
-                order.UpdatedAt = DateTime.UtcNow;
-
-                if (order.RemainingQuantity <= 0.00000001m)
-                {
-                    order.Status = OrderStatus.Filled;
-                    order.FilledQuantity = order.Quantity;
-                }
-                else
-                {
-                    order.Status = OrderStatus.PartiallyFilled;
-                }
+                var fillEvent = PaperOrderStateMachine.ApplyFill(order, fillQty, fillPrice, fee, DateTime.UtcNow);
 
                 await _store.SavePaperOrderAsync(order);
+                await _store.SavePaperOrderEventAsync(fillEvent);
 
                 // Update Position and Wallet
                 var usdtBalance = balances.First(b => b.Symbol == "USDT");

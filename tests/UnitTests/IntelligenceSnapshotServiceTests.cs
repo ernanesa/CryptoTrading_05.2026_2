@@ -37,12 +37,36 @@ public class IntelligenceSnapshotServiceTests
         Assert.Equal("event-risk-heuristic-m6-v1", snapshot.EventRisk.ModelVersion);
         Assert.Equal("rag-context-provider-m6-v1", snapshot.RagContext.ProviderVersion);
         Assert.Equal("explanation-heuristic-m6-v1", snapshot.Explanation.ModelVersion);
+        Assert.Equal("feature-schema/v1", snapshot.FeatureSchema.Version);
+        Assert.True(snapshot.ShadowOutput.IsShadowMode);
+        Assert.Equal("ShadowModelRunner", snapshot.ShadowOutput.Source);
         Assert.NotEmpty(snapshot.RegisteredModels);
         Assert.All(snapshot.RegisteredModels, model => Assert.True(model.IsShadowMode));
         Assert.Equal("TrendingUp", snapshot.MarketRegime);
         Assert.True(snapshot.RegimeConfidence > 0m);
         Assert.True(snapshot.VolatilityForecast.HorizonMinutes > 0);
         Assert.NotEmpty(snapshot.Insights);
+    }
+
+    [Fact]
+    public void CreateSnapshot_ShadowOutput_RemainsAuxiliaryAndNeverExecutes()
+    {
+        var features = CreateFeatures(
+            ema21: 125m,
+            ema50: 100m,
+            adx: 42m,
+            volumeZScore: 4m,
+            imbalance: 1m,
+            returns: 0.04m,
+            atr14: 90m,
+            spread: 35m);
+
+        var snapshot = _service.CreateSnapshot("BNBUSDT", "1m", features);
+
+        Assert.True(snapshot.ShadowOutput.IsShadowMode);
+        Assert.NotEqual(0m, snapshot.ShadowOutput.Score);
+        Assert.Contains("RiskEngine", snapshot.ShadowOutput.Explanation);
+        Assert.DoesNotContain("execute", snapshot.ShadowOutput.Explanation, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

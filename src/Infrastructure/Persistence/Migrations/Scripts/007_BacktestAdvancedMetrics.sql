@@ -1,0 +1,18 @@
+ALTER TABLE backtest_runs
+    ADD COLUMN IF NOT EXISTS total_pnl NUMERIC(28, 8) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS total_pnl_percent NUMERIC(10, 4) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS max_drawdown NUMERIC(28, 8) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS expectancy NUMERIC(28, 8) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS total_fees NUMERIC(28, 8) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS exposure_time_percent NUMERIC(10, 4) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS avg_holding_time_hours DOUBLE PRECISION NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS max_consecutive_losses INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS fee_impact_percent NUMERIC(10, 4) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS slippage_impact_percent NUMERIC(10, 4) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS regime_breakdown JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE backtest_trades
+    ADD COLUMN IF NOT EXISTS regime VARCHAR(50) NOT NULL DEFAULT 'Unknown';
+
+CREATE INDEX IF NOT EXISTS idx_backtest_runs_strategy_symbol_executed
+    ON backtest_runs (strategy_name, symbol, executed_at DESC);

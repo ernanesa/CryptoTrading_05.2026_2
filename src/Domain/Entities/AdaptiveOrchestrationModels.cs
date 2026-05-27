@@ -121,6 +121,28 @@ public class StrategyPerformanceMetric
     public DateTime LastUpdated { get; set; }
 }
 
+public class AdaptiveMetricsAggregationOptions
+{
+    public int MinimumEvidenceSamples { get; set; } = 5;
+    public int BacktestReportLimit { get; set; } = 100;
+    public int PaperTradeLimit { get; set; } = 200;
+    public int DecisionAuditLimit { get; set; } = 500;
+    public TimeSpan AuditTradeMatchWindow { get; set; } = TimeSpan.FromHours(2);
+}
+
+public class AdaptiveMetricBreakdown
+{
+    public StrategyPerformanceMetric Metric { get; set; } = new();
+    public int BacktestSamples { get; set; }
+    public int PaperTradeSamples { get; set; }
+    public int ApprovedAudits { get; set; }
+    public int RiskRejections { get; set; }
+    public int EvidenceSamples { get; set; }
+    public int MinimumEvidenceSamples { get; set; }
+    public bool HasMinimumEvidence { get; set; }
+    public string SourceSummary { get; set; } = string.Empty;
+}
+
 public class StrategyState
 {
     public string StrategyName { get; set; } = string.Empty;

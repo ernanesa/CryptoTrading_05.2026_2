@@ -61,6 +61,7 @@ public class PaperTradingScenarioTests
         Assert.Equal(OrderStatus.PartiallyFilled, updatedOrder.Status);
         Assert.Equal(0.02m, updatedOrder.FilledQuantity);
         Assert.Equal(0.03m, updatedOrder.RemainingQuantity);
+        Assert.Equal(["Accepted", "PartiallyFilled"], store.OrderEvents.Select(e => e.EventType));
         
         var position = await store.GetActivePaperPositionAsync("BTCUSDT");
         Assert.NotNull(position);
@@ -72,11 +73,13 @@ public class PaperTradingScenarioTests
         var activeOrders2 = await store.GetActivePaperOrdersAsync("BTCUSDT");
         var updatedOrder2 = activeOrders2.First();
         Assert.Equal(0.04m, updatedOrder2.FilledQuantity);
+        Assert.Equal("PartiallyFilled", store.OrderEvents.Last().EventType);
         
         // Run loop 3
         await executor.ProcessSignalAsync(dummyStrategy, buyPoint);
         var activeOrders3 = await store.GetActivePaperOrdersAsync("BTCUSDT");
         Assert.Empty(activeOrders3); // Fully filled
+        Assert.Equal("Filled", store.OrderEvents.Last().EventType);
         
         var position3 = await store.GetActivePaperPositionAsync("BTCUSDT");
         Assert.Equal(0.05m, position3!.Quantity);

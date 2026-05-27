@@ -26,6 +26,7 @@ public class BinanceTestnetTests
         public List<TestnetAuditLog> Logs { get; set; } = new();
         public List<PaperTrade> Trades { get; set; } = new();
         public List<PaperOrder> _orders { get; set; } = new();
+        public List<PaperOrderEvent> OrderEvents { get; set; } = new();
         private readonly List<WalletBalance> _balances = new();
         public List<DecisionAudit> Audits { get; set; } = new();
 
@@ -56,6 +57,13 @@ public class BinanceTestnetTests
             var active = _orders.Where(o => o.Symbol == symbol && (o.Status == OrderStatus.New || o.Status == OrderStatus.Open || o.Status == OrderStatus.PartiallyFilled));
             return Task.FromResult(active);
         }
+        public Task SavePaperOrderEventAsync(PaperOrderEvent orderEvent)
+        {
+            if (orderEvent.Id == 0) orderEvent.Id = OrderEvents.Count + 1;
+            OrderEvents.Add(orderEvent);
+            return Task.CompletedTask;
+        }
+        public Task<IEnumerable<PaperOrderEvent>> GetPaperOrderEventsAsync(long paperOrderId) => Task.FromResult<IEnumerable<PaperOrderEvent>>(OrderEvents.Where(e => e.PaperOrderId == paperOrderId));
 
         public Task SaveStrategyPerformanceMetricAsync(CryptoTrading.Domain.Entities.StrategyPerformanceMetric metric) => Task.CompletedTask; public Task<CryptoTrading.Domain.Entities.StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime) => Task.FromResult<CryptoTrading.Domain.Entities.StrategyPerformanceMetric?>(null); public Task SaveStrategyStateAsync(CryptoTrading.Domain.Entities.StrategyState state) => Task.CompletedTask; public Task<CryptoTrading.Domain.Entities.StrategyState?> GetStrategyStateAsync(string strategyName, string symbol) => Task.FromResult<CryptoTrading.Domain.Entities.StrategyState?>(null); public Task ClearPaperTradingDataAsync() => Task.CompletedTask;
 

@@ -168,4 +168,81 @@ public class BacktestEngineTests
         Assert.Contains("## Regime Performance", markdown);
         Assert.Contains("| Trending | 3 | 66.67% | 150.00 | 0.50% |", markdown);
     }
+
+    [Fact]
+    public void PerformanceAnalyzer_PopulatesAdvancedMetricsDeterministically()
+    {
+        var report = new BacktestReport
+        {
+            StrategyName = "Deterministic Strategy",
+            Symbol = "BTCUSDT",
+            Interval = "1h",
+            StartTime = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndTime = new DateTime(2026, 5, 1, 10, 0, 0, DateTimeKind.Utc),
+            InitialCapital = 10000m,
+            FinalCapital = 10025m,
+            Trades =
+            [
+                new Position
+                {
+                    Symbol = "BTCUSDT",
+                    Type = PositionType.Long,
+                    EntryTime = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+                    ExitTime = new DateTime(2026, 5, 1, 2, 0, 0, DateTimeKind.Utc),
+                    RealizedPnL = 100m,
+                    FeesPaid = 10m,
+                    Regime = "Trending"
+                },
+                new Position
+                {
+                    Symbol = "BTCUSDT",
+                    Type = PositionType.Long,
+                    EntryTime = new DateTime(2026, 5, 1, 3, 0, 0, DateTimeKind.Utc),
+                    ExitTime = new DateTime(2026, 5, 1, 4, 0, 0, DateTimeKind.Utc),
+                    RealizedPnL = -50m,
+                    FeesPaid = 5m,
+                    Regime = "Sideways"
+                },
+                new Position
+                {
+                    Symbol = "BTCUSDT",
+                    Type = PositionType.Long,
+                    EntryTime = new DateTime(2026, 5, 1, 5, 0, 0, DateTimeKind.Utc),
+                    ExitTime = new DateTime(2026, 5, 1, 8, 0, 0, DateTimeKind.Utc),
+                    RealizedPnL = -25m,
+                    FeesPaid = 5m,
+                    Regime = "Trending"
+                }
+            ]
+        };
+
+        new PerformanceAnalyzer().PopulateMetrics(report);
+
+        Assert.Equal(3, report.TotalTrades);
+        Assert.Equal(1, report.WinningTrades);
+        Assert.Equal(2, report.LosingTrades);
+        Assert.Equal(25m, report.TotalPnL);
+        Assert.Equal(0.25m, report.TotalPnLPercent);
+        Assert.Equal(20m, report.TotalFees);
+        Assert.Equal(60m, report.ExposureTimePercent);
+        Assert.Equal(2d, report.AvgHoldingTimeHours);
+        Assert.Equal(2, report.MaxConsecutiveLosses);
+        Assert.Equal(0.2m, report.FeeImpactPercent);
+        Assert.Equal(0.05m, report.SlippageImpactPercent);
+        Assert.Equal(75m, report.MaxDrawdown);
+        Assert.Equal(1.3333m, Math.Round(report.ProfitFactor, 4));
+        Assert.Equal(8.3333m, Math.Round(report.Expectancy, 4));
+
+        var trending = report.RegimeBreakdown["Trending"];
+        Assert.Equal(2, trending.Trades);
+        Assert.Equal(0.5m, trending.WinRate);
+        Assert.Equal(75m, trending.PnL);
+        Assert.Equal(0.375m, trending.AvgReturn);
+
+        var sideways = report.RegimeBreakdown["Sideways"];
+        Assert.Equal(1, sideways.Trades);
+        Assert.Equal(0m, sideways.WinRate);
+        Assert.Equal(-50m, sideways.PnL);
+        Assert.Equal(-0.5m, sideways.AvgReturn);
+    }
 }

@@ -1,3 +1,4 @@
+using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
 using CryptoTrading.Domain.Enums;
 
@@ -282,6 +283,248 @@ public class WalkForwardEvaluator
             Verdict = improvement >= 5m ? "AdaptivePreferred" : "FixedComparable"
         };
     }
+}
+
+public class AdaptiveMetricsAggregator
+{
+    private readonly IFeatureStore _store;
+    private readonly IBacktestRepository _backtests;
+
+    public AdaptiveMetricsAggregator(IFeatureStore store, IBacktestRepository backtests)
+    {
+        _store = store;
+        _backtests = backtests;
+    }
+
+    public async Task<AdaptiveMetricBreakdown> BuildBreakdownAsync(
+        string strategyName,
+        string symbol,
+        string timeframe,
+        string regime,
+        AdaptiveMetricsAggregationOptions? options = null)
+    {
+        var effectiveOptions = NormalizeOptions(options);
+        var normalizedSymbol = symbol.ToUpperInvariant();
+        var normalizedRegime = string.IsNullOrWhiteSpace(regime) ? "Unknown" : regime;
+        var normalizedTimeframe = string.IsNullOrWhiteSpace(timeframe) ? "unknown" : timeframe;
+
+        var reports = (await _backtests.GetReportsAsync(effectiveOptions.BacktestReportLimit))
+            .Where(r => Matches(r.StrategyName, strategyName)
+                && Matches(r.Symbol, normalizedSymbol)
+                && Matches(r.Interval, normalizedTimeframe))
+            .ToList();
+
+        var paperTrades = (await _store.GetPaperTradesAsync(normalizedSymbol, effectiveOptions.PaperTradeLimit))
+            .OrderBy(t => t.ExecutedAt)
+            .ToList();
+
+        var audits = (await _store.GetDecisionAuditsAsync(effectiveOptions.DecisionAuditLimit))
+            .Where(a => Matches(a.Symbol, normalizedSymbol) && Matches(a.StrategyName, strategyName))
+            .OrderBy(a => a.Timestamp)
+            .ToList();
+
+        var approvedAudits = audits.Where(a => Matches(a.Decision, "APPROVED")).ToList();
+        var riskRejections = audits.Count(a => Matches(a.Decision, "REJECTED"));
+        var matchedPaperTrades = MatchPaperTradesToAudits(paperTrades, approvedAudits, effectiveOptions.AuditTradeMatchWindow);
+
+        var backtestSamples = 0;
+        var backtestWins = 0;
+        var weightedProfitFactor = 0m;
+        var profitFactorWeight = 0;
+        var maxDrawdown = 0m;
+        var consecutiveLosses = 0;
+        var slippageWeight = 0m;
+        var slippageSamples = 0;
+
+        foreach (var report in reports)
+        {
+            var sampleCount = GetBacktestSampleCount(report, normalizedRegime);
+            if (sampleCount <= 0)
+            {
+                continue;
+            }
+
+            var wins = GetBacktestWins(report, normalizedRegime, sampleCount);
+            backtestSamples += sampleCount;
+            backtestWins += wins;
+            weightedProfitFactor += BoundProfitFactor(report.ProfitFactor) * sampleCount;
+            profitFactorWeight += sampleCount;
+            maxDrawdown = Math.Max(maxDrawdown, report.MaxDrawdownPercent);
+            consecutiveLosses = Math.Max(consecutiveLosses, report.MaxConsecutiveLosses);
+            slippageWeight += report.SlippageImpactPercent * sampleCount;
+            slippageSamples += sampleCount;
+        }
+
+        var paperOutcomeTrades = matchedPaperTrades.Where(t => t.PnL != 0m).ToList();
+        var paperSamples = paperOutcomeTrades.Count;
+        var paperWins = paperOutcomeTrades.Count(t => t.PnL > 0m);
+        var paperProfitFactor = CalculateProfitFactor(paperOutcomeTrades);
+        if (paperSamples > 0)
+        {
+            weightedProfitFactor += BoundProfitFactor(paperProfitFactor) * paperSamples;
+            profitFactorWeight += paperSamples;
+            consecutiveLosses = Math.Max(consecutiveLosses, CalculateCurrentLossStreak(paperOutcomeTrades));
+        }
+
+        var outcomeSamples = backtestSamples + paperSamples;
+        var evidenceSamples = outcomeSamples + riskRejections;
+        var hasMinimumEvidence = evidenceSamples >= effectiveOptions.MinimumEvidenceSamples;
+        var winRate = outcomeSamples > 0
+            ? (backtestWins + paperWins) / (decimal)outcomeSamples
+            : 0.50m;
+        var profitFactor = profitFactorWeight > 0
+            ? weightedProfitFactor / profitFactorWeight
+            : 1m;
+
+        var metric = new StrategyPerformanceMetric
+        {
+            StrategyName = strategyName,
+            Symbol = normalizedSymbol,
+            Timeframe = normalizedTimeframe,
+            Regime = normalizedRegime,
+            WinRate = RoundRate(winRate),
+            ProfitFactor = RoundScore(profitFactor),
+            MaxDrawdown = RoundScore(maxDrawdown),
+            ConsecutiveLosses = consecutiveLosses,
+            SlippageTolerance = slippageSamples > 0 ? RoundScore(slippageWeight / slippageSamples) : 0m,
+            RiskRejections = riskRejections,
+            LastUpdated = DateTime.UtcNow
+        };
+
+        return new AdaptiveMetricBreakdown
+        {
+            Metric = metric,
+            BacktestSamples = backtestSamples,
+            PaperTradeSamples = paperSamples,
+            ApprovedAudits = approvedAudits.Count,
+            RiskRejections = riskRejections,
+            EvidenceSamples = evidenceSamples,
+            MinimumEvidenceSamples = effectiveOptions.MinimumEvidenceSamples,
+            HasMinimumEvidence = hasMinimumEvidence,
+            SourceSummary = $"backtests={backtestSamples}; paper_trades={paperSamples}; approved_audits={approvedAudits.Count}; risk_rejections={riskRejections}"
+        };
+    }
+
+    public async Task<AdaptiveMetricBreakdown> AggregateAndPersistAsync(
+        string strategyName,
+        string symbol,
+        string timeframe,
+        string regime,
+        AdaptiveMetricsAggregationOptions? options = null)
+    {
+        var breakdown = await BuildBreakdownAsync(strategyName, symbol, timeframe, regime, options);
+        if (breakdown.HasMinimumEvidence)
+        {
+            await _store.SaveStrategyPerformanceMetricAsync(breakdown.Metric);
+        }
+
+        return breakdown;
+    }
+
+    public async Task<IReadOnlyList<AdaptiveMetricBreakdown>> AggregateAndPersistAsync(
+        IEnumerable<string> strategyNames,
+        string symbol,
+        string timeframe,
+        string regime,
+        AdaptiveMetricsAggregationOptions? options = null)
+    {
+        var results = new List<AdaptiveMetricBreakdown>();
+        foreach (var strategyName in strategyNames.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            results.Add(await AggregateAndPersistAsync(strategyName, symbol, timeframe, regime, options));
+        }
+
+        return results;
+    }
+
+    private static AdaptiveMetricsAggregationOptions NormalizeOptions(AdaptiveMetricsAggregationOptions? options)
+    {
+        var effective = options ?? new AdaptiveMetricsAggregationOptions();
+        effective.MinimumEvidenceSamples = Math.Max(1, effective.MinimumEvidenceSamples);
+        effective.BacktestReportLimit = Math.Max(1, effective.BacktestReportLimit);
+        effective.PaperTradeLimit = Math.Max(1, effective.PaperTradeLimit);
+        effective.DecisionAuditLimit = Math.Max(1, effective.DecisionAuditLimit);
+        if (effective.AuditTradeMatchWindow <= TimeSpan.Zero)
+        {
+            effective.AuditTradeMatchWindow = TimeSpan.FromHours(2);
+        }
+
+        return effective;
+    }
+
+    private static List<PaperTrade> MatchPaperTradesToAudits(
+        IReadOnlyList<PaperTrade> trades,
+        IReadOnlyList<DecisionAudit> approvedAudits,
+        TimeSpan matchWindow)
+    {
+        return trades
+            .Where(t => t.PnL != 0m)
+            .Where(t => approvedAudits.Any(a => Math.Abs((t.ExecutedAt - a.Timestamp).TotalMinutes) <= matchWindow.TotalMinutes))
+            .ToList();
+    }
+
+    private static int GetBacktestSampleCount(BacktestReport report, string regime)
+    {
+        if (report.RegimeBreakdown.TryGetValue(regime, out var regimePerformance) && regimePerformance.Trades > 0)
+        {
+            return regimePerformance.Trades;
+        }
+
+        return report.TotalTrades;
+    }
+
+    private static int GetBacktestWins(BacktestReport report, string regime, int sampleCount)
+    {
+        if (report.RegimeBreakdown.TryGetValue(regime, out var regimePerformance) && regimePerformance.Trades > 0)
+        {
+            return (int)Math.Round(regimePerformance.WinRate * regimePerformance.Trades, MidpointRounding.AwayFromZero);
+        }
+
+        if (report.WinningTrades > 0 || report.LosingTrades > 0)
+        {
+            return report.WinningTrades;
+        }
+
+        return (int)Math.Round(report.WinRate * sampleCount, MidpointRounding.AwayFromZero);
+    }
+
+    private static decimal CalculateProfitFactor(IReadOnlyList<PaperTrade> trades)
+    {
+        var grossProfit = trades.Where(t => t.PnL > 0m).Sum(t => t.PnL);
+        var grossLoss = Math.Abs(trades.Where(t => t.PnL < 0m).Sum(t => t.PnL));
+
+        if (grossLoss > 0m)
+        {
+            return grossProfit / grossLoss;
+        }
+
+        return grossProfit > 0m ? 5m : 1m;
+    }
+
+    private static int CalculateCurrentLossStreak(IReadOnlyList<PaperTrade> trades)
+    {
+        var streak = 0;
+        foreach (var trade in trades.OrderByDescending(t => t.ExecutedAt))
+        {
+            if (trade.PnL < 0m)
+            {
+                streak++;
+                continue;
+            }
+
+            break;
+        }
+
+        return streak;
+    }
+
+    private static bool Matches(string left, string right) => left.Equals(right, StringComparison.OrdinalIgnoreCase);
+
+    private static decimal BoundProfitFactor(decimal value) => Math.Clamp(value <= 0m ? 1m : value, 0m, 5m);
+
+    private static decimal RoundRate(decimal value) => Math.Round(Math.Clamp(value, 0m, 1m), 4);
+
+    private static decimal RoundScore(decimal value) => Math.Round(Math.Clamp(value, 0m, 100m), 2);
 }
 
 public class AdaptiveFeedbackStateProjector

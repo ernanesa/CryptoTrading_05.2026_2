@@ -5,6 +5,7 @@ namespace CryptoTrading.Application.Services;
 
 public class IntelligenceSnapshotService : IIntelligenceSnapshotService
 {
+    private readonly ShadowModelRunner _shadowModelRunner = new();
     private readonly IRegimeDetectionService _regimeDetection;
     private readonly IAnomalyDetectionService _anomalyDetection;
     private readonly IFeatureExtractor _featureExtractor;
@@ -65,6 +66,7 @@ public class IntelligenceSnapshotService : IIntelligenceSnapshotService
         var metaLabel = _metaLabeling.Label(featureVector, volatilityForecast, regime);
         var eventRisk = _eventRiskClassifier.Classify(featureVector, volatilityForecast);
         var sentimentRisk = _sentimentRisk.Evaluate(featureVector, eventRisk);
+        var shadowOutput = _shadowModelRunner.Run(featureVector, volatilityForecast, anomalyScore);
 
         var snapshot = new IntelligenceSnapshot
         {
@@ -81,6 +83,8 @@ public class IntelligenceSnapshotService : IIntelligenceSnapshotService
             EventRisk = eventRisk,
             SentimentRisk = sentimentRisk,
             RagContext = _ragContext.BuildContext(symbol, interval, regime),
+            FeatureSchema = new FeatureSchemaVersion(),
+            ShadowOutput = shadowOutput,
             RegisteredModels = _modelRegistry.GetRegisteredModels().ToList(),
             HasAnomaly = anomalyScore >= 70m,
             Insights = BuildInsights(regime, anomalyScore, volatilityForecast, metaLabel, sentimentRisk, eventRisk, latest)

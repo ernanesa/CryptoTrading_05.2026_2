@@ -67,6 +67,8 @@ public interface IFeatureStore
     /// </summary>
     Task SavePaperOrderAsync(PaperOrder order);
     Task<IEnumerable<PaperOrder>> GetActivePaperOrdersAsync(string symbol);
+    Task SavePaperOrderEventAsync(PaperOrderEvent orderEvent);
+    Task<IEnumerable<PaperOrderEvent>> GetPaperOrderEventsAsync(long paperOrderId);
 
     Task SaveDecisionAuditAsync(DecisionAudit audit);
 

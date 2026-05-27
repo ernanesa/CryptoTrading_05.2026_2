@@ -3,6 +3,7 @@ using CryptoTrading.Application.Strategies;
 using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
 using CryptoTrading.Domain.Enums;
+using CryptoTrading.Domain.Services;
 
 namespace CryptoTrading.UnitTests;
 
@@ -15,6 +16,7 @@ public class PaperTradingTests
         public List<Candle> Candles { get; set; } = new();
         public List<CandleFeature> Features { get; set; } = new();
         public List<PaperOrder> _orders { get; set; } = new();
+        public List<PaperOrderEvent> OrderEvents { get; set; } = new();
         public List<WalletBalance> Balances { get; set; } = new()
         {
             new WalletBalance { Symbol = "USDT", Free = 10000m, Locked = 0m, UpdatedAt = DateTime.UtcNow }
@@ -87,8 +89,23 @@ public class PaperTradingTests
             return Task.FromResult(active);
         }
 
+        public Task SavePaperOrderEventAsync(PaperOrderEvent orderEvent)
+        {
+            if (orderEvent.Id == 0) orderEvent.Id = OrderEvents.Count + 1;
+            OrderEvents.Add(orderEvent);
+            return Task.CompletedTask;
+        }
+
+        public Task<IEnumerable<PaperOrderEvent>> GetPaperOrderEventsAsync(long paperOrderId)
+        {
+            var events = OrderEvents.Where(e => e.PaperOrderId == paperOrderId).OrderBy(e => e.CreatedAt).ThenBy(e => e.Id);
+            return Task.FromResult<IEnumerable<PaperOrderEvent>>(events);
+        }
+
         public Task SaveStrategyPerformanceMetricAsync(CryptoTrading.Domain.Entities.StrategyPerformanceMetric metric) => Task.CompletedTask; public Task<CryptoTrading.Domain.Entities.StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime) => Task.FromResult<CryptoTrading.Domain.Entities.StrategyPerformanceMetric?>(null); public Task SaveStrategyStateAsync(CryptoTrading.Domain.Entities.StrategyState state) => Task.CompletedTask; public Task<CryptoTrading.Domain.Entities.StrategyState?> GetStrategyStateAsync(string strategyName, string symbol) => Task.FromResult<CryptoTrading.Domain.Entities.StrategyState?>(null); public Task ClearPaperTradingDataAsync()
         {
+            _orders.Clear();
+            OrderEvents.Clear();
             Trades.Clear();
             Audits.Clear();
             Balances.Clear();
@@ -221,6 +238,33 @@ public class PaperTradingTests
 
         Assert.True(usdtBalance.Free < 10000m); // Gastou USDT
         Assert.True(btcBalance.Free > 0m);       // Comprou BTC
+
+        var order = Assert.Single(store._orders);
+        var orderEvents = (await store.GetPaperOrderEventsAsync(order.Id)).ToList();
+        Assert.Equal(["Created", "Accepted", "Filled"], orderEvents.Select(e => e.EventType));
+        Assert.All(orderEvents, e => Assert.Equal(order.Id, e.PaperOrderId));
+    }
+
+    [Fact]
+    public void PaperOrderStateMachine_InvalidTransition_Throws()
+    {
+        var order = new PaperOrder
+        {
+            Symbol = "BTCUSDT",
+            ClientOrderId = "invalid-transition",
+            Side = "BUY",
+            Type = OrderType.Market,
+            Price = 50000m,
+            Quantity = 0.01m,
+            Status = OrderStatus.Filled,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            PaperOrderStateMachine.Cancel(order, DateTime.UtcNow, "User requested cancel"));
+
+        Assert.Contains("Invalid paper order transition", ex.Message);
+        Assert.Equal(OrderStatus.Filled, order.Status);
     }
 
     // Stub do IRiskEngine que sempre aprova sinais (para isolar testes de execução)
