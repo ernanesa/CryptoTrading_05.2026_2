@@ -6,6 +6,7 @@
       "env": {
         "QDRANT_URL": "http://localhost:6333",
         "COLLECTION_NAME": "cryptotrading_docs",
+        "ADDITIONAL_COLLECTIONS": "cryptotrading_code,cryptotrading_decisions,cryptotrading_tasks",
         "EMBEDDING_MODEL": "BAAI/bge-m3"
       }
     },
