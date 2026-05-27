@@ -334,16 +334,14 @@ app.MapGet("/api/backtest/reports", async (IBacktestRepository backtestRepo, int
     var reports = await backtestRepo.GetReportsAsync(limit);
     return Results.Ok(reports);
 })
-.WithName("GetBacktestReports")
-.WithOpenApi();
+.WithName("GetBacktestReports");
 
 app.MapGet("/api/backtest/reports/latest", async (IBacktestRepository backtestRepo, string strategy, string symbol) =>
 {
     var report = await backtestRepo.GetLatestReportAsync(strategy, symbol);
     return report != null ? Results.Ok(report) : Results.NotFound();
 })
-.WithName("GetLatestBacktestReport")
-.WithOpenApi();
+.WithName("GetLatestBacktestReport");
 
 app.MapGet("/api/paper/wallet", async (IFeatureStore store) =>
 {
