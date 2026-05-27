@@ -1,3 +1,4 @@
+using CryptoTrading.Infrastructure.Persistence;
 using CryptoTrading.Application.Services;
 using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Services;
@@ -22,7 +23,8 @@ public class Worker(
         logger.LogInformation("[M1] Worker de ingestão de dados de mercado iniciado às {time}", DateTimeOffset.Now);
 
         // Inicializar schema do banco de dados no startup
-        await featureStore.InitializeSchemaAsync();
+        var connStr = configuration.GetConnectionString("DefaultConnection") ?? "Host=localhost;Database=cryptotrading;Username=postgres;Password=postgres";
+        DatabaseMigrator.Migrate(connStr, logger);
         logger.LogInformation("[M1] Schema do PostgreSQL inicializado com sucesso.");
 
         var symbols = ReadStringArray("MarketData:Symbols", ["BTCUSDT", "ETHUSDT"]);

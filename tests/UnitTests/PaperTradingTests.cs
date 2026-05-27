@@ -22,7 +22,6 @@ public class PaperTradingTests
         public List<Position> Positions { get; set; } = new();
         public List<DecisionAudit> Audits { get; set; } = new();
 
-        public Task InitializeSchemaAsync() => Task.CompletedTask;
         public Task SaveCandlesAsync(IEnumerable<Candle> candles) { Candles.AddRange(candles); return Task.CompletedTask; }
         public Task SaveFeaturesAsync(IEnumerable<CandleFeature> features) { Features.AddRange(features); return Task.CompletedTask; }
         public Task<DateTime?> GetLastCandleTimeAsync(string symbol, string interval) => Task.FromResult<DateTime?>(null);

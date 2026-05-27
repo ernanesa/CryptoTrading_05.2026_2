@@ -7,8 +7,11 @@ var builder = Host.CreateApplicationBuilder(args);
 
 // Registrar serviços no container de injeção de dependência
 builder.Services.AddSingleton<IMarketDataAdapter, BinanceMarketDataAdapter>();
-builder.Services.AddSingleton<IFeatureStore>(sp =>
-    new FeatureStore(sp.GetRequiredService<IConfiguration>()));
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Host=localhost;Database=cryptotrading;Username=postgres;Password=postgres";
+builder.Services.AddSingleton(Npgsql.NpgsqlDataSource.Create(connStr));
+builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
+//
+//
 
 builder.Services.AddHostedService<Worker>();
 

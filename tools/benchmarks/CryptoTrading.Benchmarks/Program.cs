@@ -1,8 +1,8 @@
+using CryptoTrading.Infrastructure.Persistence;
 using System.Diagnostics;
 using CryptoTrading.Application.Services;
 using CryptoTrading.Domain.Entities;
 using CryptoTrading.Domain.Enums;
-using CryptoTrading.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 
 var filter = ReadOption(args, "--filter") ?? "*";
@@ -102,12 +102,12 @@ public sealed class LocalBenchmarkRunner
 
         await postgres.StartAsync();
 
-        var store = new FeatureStore(postgres.GetConnectionString());
+        var store = new FeatureStore(Npgsql.NpgsqlDataSource.Create(postgres.GetConnectionString()));
         var candles = SampleDataFactory.CreateCandles(300);
         var start = candles[0].OpenTime;
         var end = candles[^1].OpenTime;
 
-        await store.InitializeSchemaAsync();
+        DatabaseMigrator.Migrate(postgres.GetConnectionString());
         await store.SaveCandlesAsync(candles);
         var features = SampleDataFactory.CreateFeatures(candles.Count);
         for (var i = 0; i < features.Count; i++)

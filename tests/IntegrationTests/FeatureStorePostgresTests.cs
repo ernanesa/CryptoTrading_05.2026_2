@@ -1,5 +1,5 @@
-using CryptoTrading.Domain.Entities;
 using CryptoTrading.Infrastructure.Persistence;
+using CryptoTrading.Domain.Entities;
 using Testcontainers.PostgreSql;
 
 namespace CryptoTrading.IntegrationTests;
@@ -20,8 +20,8 @@ public sealed class FeatureStorePostgresTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task FeatureStorePersistsAndReadsMarketDataPoints()
     {
-        var store = new FeatureStore(_postgres.GetConnectionString());
-        await store.InitializeSchemaAsync();
+        var store = new FeatureStore(Npgsql.NpgsqlDataSource.Create(_postgres.GetConnectionString()));
+        DatabaseMigrator.Migrate(_postgres.GetConnectionString());
 
         var openTime = DateTime.UtcNow.AddMinutes(-10).AddTicks(-(DateTime.UtcNow.Ticks % TimeSpan.TicksPerSecond));
         var candle = new Candle
