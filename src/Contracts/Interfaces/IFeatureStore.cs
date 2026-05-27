@@ -121,4 +121,7 @@ public interface IFeatureStore
     Task<StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime);
     Task SaveStrategyStateAsync(StrategyState state);
     Task<StrategyState?> GetStrategyStateAsync(string strategyName, string symbol);
+
+    Task SavePaperLedgerEntryAsync(PaperLedgerEntry entry);
+    Task<IEnumerable<PaperLedgerEntry>> GetPaperLedgerEntriesAsync(string asset, int limit = 100);
 }

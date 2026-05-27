@@ -94,6 +94,10 @@ public class BinanceTestnetTests
         }
 
         public Task<IEnumerable<TestnetAuditLog>> GetTestnetAuditLogsAsync(int limit = 100) => Task.FromResult<IEnumerable<TestnetAuditLog>>(Logs.Take(limit));
+
+        public List<PaperLedgerEntry> LedgerEntries { get; set; } = new();
+        public Task SavePaperLedgerEntryAsync(PaperLedgerEntry entry) { LedgerEntries.Add(entry); return Task.CompletedTask; }
+        public Task<IEnumerable<PaperLedgerEntry>> GetPaperLedgerEntriesAsync(string asset, int limit = 100) => Task.FromResult<IEnumerable<PaperLedgerEntry>>(LedgerEntries.Where(e => e.Asset.Equals(asset, StringComparison.OrdinalIgnoreCase)).Take(limit));
     }
 
     [Fact]

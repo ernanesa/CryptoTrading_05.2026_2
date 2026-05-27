@@ -313,11 +313,12 @@ public class FeatureStore : IFeatureStore
     public async Task ClearPaperTradingDataAsync()
     {
         const string sql = @"
-        DELETE FROM paper_order_events;
-        DELETE FROM paper_orders;
-        DELETE FROM paper_trades; 
-        DELETE FROM decision_audits; 
-        UPDATE paper_wallet SET free = 10000.0, locked = 0.0, updated_at = NOW();";
+            DELETE FROM paper_order_events;
+            DELETE FROM paper_orders;
+            DELETE FROM paper_trades;
+            DELETE FROM decision_audits;
+            DELETE FROM paper_ledger;
+            UPDATE paper_wallet SET free = 10000.0, locked = 0.0, updated_at = NOW();";
 
         await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql);
@@ -531,5 +532,26 @@ public class FeatureStore : IFeatureStore
         await using var conn = await _dataSource.OpenConnectionAsync();
         var sql = "SELECT strategy_name AS StrategyName, symbol AS Symbol, is_paused AS IsPaused, cooldown_until AS CooldownUntil, last_score AS LastScore, advantage_cycles AS AdvantageCycles, last_updated AS LastUpdated FROM strategy_states WHERE strategy_name = @strategyName AND symbol = @symbol";
         return await conn.QuerySingleOrDefaultAsync<StrategyState>(sql, new { strategyName, symbol });
+    }
+
+    public async Task SavePaperLedgerEntryAsync(PaperLedgerEntry entry)
+    {
+        const string sql = @"
+            INSERT INTO paper_ledger (symbol, asset, amount, entry_type, description, created_at)
+            VALUES (@Symbol, @Asset, @Amount, @EntryType, @Description, @CreatedAt);";
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        await conn.ExecuteAsync(sql, entry);
+    }
+
+    public async Task<IEnumerable<PaperLedgerEntry>> GetPaperLedgerEntriesAsync(string asset, int limit = 100)
+    {
+        const string sql = @"
+            SELECT id, symbol, asset, amount, entry_type AS EntryType, description, created_at AS CreatedAt
+            FROM paper_ledger
+            WHERE asset = @Asset
+            ORDER BY created_at DESC
+            LIMIT @Limit;";
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        return await conn.QueryAsync<PaperLedgerEntry>(sql, new { Asset = asset, Limit = limit });
     }
 }

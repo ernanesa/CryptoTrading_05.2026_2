@@ -351,5 +351,9 @@ public class AdaptiveOrchestrationTests
         public Task<StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime) => Task.FromResult(SavedMetrics.LastOrDefault(m => m.StrategyName.Equals(strategyName, StringComparison.OrdinalIgnoreCase) && m.Symbol.Equals(symbol, StringComparison.OrdinalIgnoreCase) && m.Timeframe.Equals(timeframe, StringComparison.OrdinalIgnoreCase) && m.Regime.Equals(regime, StringComparison.OrdinalIgnoreCase)));
         public Task SaveStrategyStateAsync(StrategyState state) => Task.CompletedTask;
         public Task<StrategyState?> GetStrategyStateAsync(string strategyName, string symbol) => Task.FromResult<StrategyState?>(null);
+
+        public List<PaperLedgerEntry> LedgerEntries { get; set; } = new();
+        public Task SavePaperLedgerEntryAsync(PaperLedgerEntry entry) { LedgerEntries.Add(entry); return Task.CompletedTask; }
+        public Task<IEnumerable<PaperLedgerEntry>> GetPaperLedgerEntriesAsync(string asset, int limit = 100) => Task.FromResult<IEnumerable<PaperLedgerEntry>>(LedgerEntries.Where(e => e.Asset.Equals(asset, StringComparison.OrdinalIgnoreCase)).Take(limit));
     }
 }

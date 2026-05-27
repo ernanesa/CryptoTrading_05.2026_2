@@ -160,7 +160,16 @@ public class PaperTradeExecutor
             };
             
             await _store.SavePaperOrderAsync(order);
-            await _store.SavePaperOrderEventAsync(PaperOrderStateMachine.Created(order, order.CreatedAt));
+            await _store.SavePaperOrderEventAsync(CryptoTrading.Domain.Services.PaperOrderStateMachine.Created(order, order.CreatedAt));
+            await _store.SavePaperLedgerEntryAsync(new PaperLedgerEntry
+            {
+                Symbol = symbol,
+                Asset = "USDT",
+                Amount = -allocateAmount,
+                EntryType = "LOCK",
+                Description = $"Lock USDT for order {order.ClientOrderId}",
+                CreatedAt = DateTime.UtcNow
+            });
             audit.Reason = $"ORDEM CADASTRADA (COMPRA): {quantity:F4} {baseAssetSymbol} a Mercado";
         }
         else if (signal.Type == TradeSignalType.Exit || signal.Type == TradeSignalType.Sell)
@@ -188,7 +197,7 @@ public class PaperTradeExecutor
             };
             
             await _store.SavePaperOrderAsync(order);
-            await _store.SavePaperOrderEventAsync(PaperOrderStateMachine.Created(order, order.CreatedAt));
+            await _store.SavePaperOrderEventAsync(CryptoTrading.Domain.Services.PaperOrderStateMachine.Created(order, order.CreatedAt));
             audit.Reason = $"ORDEM CADASTRADA (VENDA): {quantity:F4} {baseAssetSymbol} a Mercado";
         }
         else
@@ -219,7 +228,7 @@ public class PaperTradeExecutor
             if (order.Status == OrderStatus.New)
             {
                 var acceptedAt = DateTime.UtcNow;
-                var acceptedEvent = PaperOrderStateMachine.Activate(order, acceptedAt);
+                var acceptedEvent = CryptoTrading.Domain.Services.PaperOrderStateMachine.Activate(order, acceptedAt);
                 await _store.SavePaperOrderAsync(order);
                 await _store.SavePaperOrderEventAsync(acceptedEvent);
             }
@@ -262,7 +271,7 @@ public class PaperTradeExecutor
 
                 var realizedBeforeFill = activePosition?.RealizedPnL ?? 0m;
 
-                var fillEvent = PaperOrderStateMachine.ApplyFill(order, fillQty, fillPrice, fee, DateTime.UtcNow);
+                var fillEvent = CryptoTrading.Domain.Services.PaperOrderStateMachine.ApplyFill(order, fillQty, fillPrice, fee, DateTime.UtcNow);
 
                 await _store.SavePaperOrderAsync(order);
                 await _store.SavePaperOrderEventAsync(fillEvent);
@@ -278,6 +287,16 @@ public class PaperTradeExecutor
                 {
                     usdtBalance.Free -= (fillValue + fee);
                     assetBalance.Free += fillQty;
+
+                    await _store.SavePaperLedgerEntryAsync(new PaperLedgerEntry
+                    {
+                        Symbol = symbol,
+                        Asset = "USDT",
+                        Amount = -(fillValue + fee),
+                        EntryType = "BUY_FILL",
+                        Description = $"USDT spent for buying asset {assetSymbol} at {fillPrice}",
+                        CreatedAt = DateTime.UtcNow
+                    });
 
                     if (activePosition == null || activePosition.IsClosed)
                     {
@@ -307,9 +326,19 @@ public class PaperTradeExecutor
                     if (Math.Abs(assetBalance.Free) <= 0.00000001m)
                         assetBalance.Free = 0m;
 
+                    await _store.SavePaperLedgerEntryAsync(new PaperLedgerEntry
+                    {
+                        Symbol = symbol,
+                        Asset = "USDT",
+                        Amount = fillValue - fee,
+                        EntryType = "SELL_FILL",
+                        Description = $"USDT received from selling asset {assetSymbol} at {fillPrice}",
+                        CreatedAt = DateTime.UtcNow
+                    });
+
                     if (activePosition != null && !activePosition.IsClosed)
                     {
-                        activePosition.PartiallyClose(fillPrice, fillQty, fee);
+                        PositionStateMachine.PartiallyClose(activePosition, fillPrice, fillQty, fee, DateTime.UtcNow);
                         if (activePosition.IsClosed || activePosition.Quantity <= 0.00000001m)
                         {
                             activePosition.Quantity = 0m;

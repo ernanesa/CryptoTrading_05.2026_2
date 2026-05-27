@@ -120,6 +120,10 @@ public class PaperTradingTests
         public Task<IEnumerable<TestnetOrder>> GetActiveTestnetOrdersAsync() => Task.FromResult(Enumerable.Empty<TestnetOrder>());
         public Task SaveTestnetAuditLogAsync(TestnetAuditLog log) => Task.CompletedTask;
         public Task<IEnumerable<TestnetAuditLog>> GetTestnetAuditLogsAsync(int limit = 100) => Task.FromResult(Enumerable.Empty<TestnetAuditLog>());
+
+        public List<PaperLedgerEntry> LedgerEntries { get; set; } = new();
+        public Task SavePaperLedgerEntryAsync(PaperLedgerEntry entry) { LedgerEntries.Add(entry); return Task.CompletedTask; }
+        public Task<IEnumerable<PaperLedgerEntry>> GetPaperLedgerEntriesAsync(string asset, int limit = 100) => Task.FromResult<IEnumerable<PaperLedgerEntry>>(LedgerEntries.Where(e => e.Asset.Equals(asset, StringComparison.OrdinalIgnoreCase)).Take(limit));
     }
 
     [Fact]
@@ -261,7 +265,7 @@ public class PaperTradingTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            PaperOrderStateMachine.Cancel(order, DateTime.UtcNow, "User requested cancel"));
+            CryptoTrading.Domain.Services.PaperOrderStateMachine.Cancel(order, DateTime.UtcNow, "User requested cancel"));
 
         Assert.Contains("Invalid paper order transition", ex.Message);
         Assert.Equal(OrderStatus.Filled, order.Status);
