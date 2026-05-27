@@ -134,3 +134,10 @@ Antes de qualquer atividade:
 - `ernanesa/Bettina`: referência histórica de pesquisa.
 
 Esses repositórios são apenas leitura para este ciclo.
+
+## Observability & Real State
+O dashboard foi refatorado para ter um controle global de estado (Offline, Simulation, Paper, Testnet).
+Foi adicionada telemetria com OpenTelemetry no backend (.NET) para exportação de métricas Prometheus.
+Você pode rodar Prometheus e Grafana localmente usando:
+`docker-compose up -d`
+Smoke tests e2e foram adicionados via Playwright.
