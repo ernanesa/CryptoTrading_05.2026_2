@@ -42,6 +42,8 @@ builder.Services.AddSingleton<IVolatilityForecastService, VolatilityForecastServ
 builder.Services.AddSingleton<IMetaLabelingService, MetaLabelingService>();
 builder.Services.AddSingleton<IEventRiskClassifier, EventRiskClassifier>();
 builder.Services.AddSingleton<ISentimentRiskService, SentimentRiskService>();
+builder.Services.AddSingleton<FeatureSchemaRegistry>();
+builder.Services.AddSingleton<IntelligenceFallbackPolicy>();
 builder.Services.AddSingleton<IModelRegistry, ModelRegistry>();
 builder.Services.AddSingleton<IRagContextProvider, RagContextProvider>();
 builder.Services.AddSingleton<IExplanationService, ExplanationService>();
