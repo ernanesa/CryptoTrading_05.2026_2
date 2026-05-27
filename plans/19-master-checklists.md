@@ -353,3 +353,23 @@ Contexto encontrado: mapeamento de nomes de estratégias no tracker de performan
 Impacto: Implementada nova estratégia `MacdAdxTrendFollowingStrategy`, registrada no `StrategyRegistry` e adicionada aos serviços de mapeamento e score de orquestração adaptativa, com suíte de testes xUnit verde e 0 warnings no build.
 Data: 2026-05-22
 - [x] M7: Adaptive Real Metrics persistidas e aplicadas na orquestração, e testes executados.
+
+## Release Readiness Hardening
+
+- [x] data atual verificada;
+- [x] RAG consultado;
+- [x] workflows existentes revisados;
+- [x] gates obrigatórios separados (`ci.yml`);
+- [x] gates opt-in separados (`hardening-gates.yml`);
+- [x] Dependabot adicionado (`dependabot.yml`);
+- [x] validação de redaction mantida via testes unitários existentes;
+- [x] checklist de segurança e secrets documentados em `plans/30-release-readiness-report.md`;
+- [x] testes e builds rodaram limpos (dotnet test, npm run build).
+
+### Registro da atividade Release Readiness Hardening
+
+RAG consultado: sim
+Consulta: hardening gates CI dotnet dashboard testcontainers playwright native aot secret scanning dependabot release readiness report plans 26 hardening report risks known
+Contexto encontrado: separar CI workflow em mandatório e opt-in; adicionar dependabot e criar doc final de release readiness.
+Impacto: CI consolidado e mais veloz, mantendo features avançadas acessíveis de forma sob demanda. Segurança aprimorada.
+Data: 2026-05-27

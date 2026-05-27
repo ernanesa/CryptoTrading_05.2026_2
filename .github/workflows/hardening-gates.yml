@@ -1,10 +1,6 @@
-name: Hardening Gates
+name: Opt-in Hardening Gates
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       run_playwright:
@@ -50,8 +46,8 @@ env:
   CONFIGURATION: Release
 
 jobs:
-  hardening:
-    name: Tests, Dashboard and Benchmarks
+  opt-in-gates:
+    name: Opt-in Tests, Dashboard and Benchmarks
     runs-on: ubuntu-latest
 
     steps:
@@ -64,47 +60,36 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Setup Node.js ${{ env.NODE_VERSION }}
+        if: ${{ inputs.run_playwright == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: dashboard/package-lock.json
 
-      - name: Run unit tests
-        run: dotnet test tests/UnitTests/CryptoTrading.UnitTests.csproj -c ${{ env.CONFIGURATION }} --verbosity normal
-
       - name: Run PostgreSQL integration tests
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_integration_tests == 'true' }}
+        if: ${{ inputs.run_integration_tests == 'true' }}
         run: dotnet test tests/IntegrationTests/CryptoTrading.IntegrationTests.csproj -c ${{ env.CONFIGURATION }} --verbosity normal
 
       - name: Install dashboard dependencies
+        if: ${{ inputs.run_playwright == 'true' }}
         working-directory: dashboard
         run: npm ci
 
-      - name: Build dashboard
-        working-directory: dashboard
-        run: npm run build
-
       - name: Install Playwright browser
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_playwright == 'true' }}
+        if: ${{ inputs.run_playwright == 'true' }}
         working-directory: dashboard
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright dashboard smoke
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_playwright == 'true' }}
+        if: ${{ inputs.run_playwright == 'true' }}
         working-directory: dashboard
         run: npm run test:e2e
 
-      - name: Run adaptive benchmark smoke
-        run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Adaptive*' --iterations 3
-
-      - name: Run indicator benchmark smoke
-        run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*Indicator*' --iterations 2
-
       - name: Run FeatureStore PostgreSQL benchmark
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_featurestore_benchmark == 'true' }}
+        if: ${{ inputs.run_featurestore_benchmark == 'true' }}
         run: dotnet run -c ${{ env.CONFIGURATION }} --project tools/benchmarks/CryptoTrading.Benchmarks -- --filter '*FeatureStore*' --iterations 3
 
       - name: Run Native AOT validation
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_native_aot == 'true' }}
+        if: ${{ inputs.run_native_aot == 'true' }}
         run: bash tools/validate-native-aot.sh '${{ inputs.native_aot_rid }}'
