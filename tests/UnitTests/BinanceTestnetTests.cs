@@ -18,7 +18,6 @@ public class BinanceTestnetTests
         public List<PaperTrade> Trades { get; set; } = new();
         public List<DecisionAudit> Audits { get; set; } = new();
 
-        public Task InitializeSchemaAsync() => Task.CompletedTask;
         public Task SaveCandlesAsync(IEnumerable<Candle> candles) => Task.CompletedTask;
         public Task SaveFeaturesAsync(IEnumerable<CandleFeature> features) => Task.CompletedTask;
         public Task<DateTime?> GetLastCandleTimeAsync(string symbol, string interval) => Task.FromResult<DateTime?>(null);

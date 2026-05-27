@@ -22,6 +22,8 @@ builder.Services.AddCors(options =>
 
 // Configuração do ambiente e injeção de dependências do Core
 builder.Services.AddSingleton<IMetricsService, MetricsService>();
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Host=localhost;Database=cryptotrading;Username=postgres;Password=postgres";
+builder.Services.AddSingleton(Npgsql.NpgsqlDataSource.Create(connStr));
 builder.Services.AddSingleton<IFeatureStore, FeatureStore>();
 builder.Services.AddSingleton<IBacktestRepository, BacktestRepository>();
 builder.Services.AddSingleton<StrategyRegistry>();

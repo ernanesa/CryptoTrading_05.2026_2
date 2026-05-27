@@ -3,7 +3,6 @@ using System.Reflection;
 using CryptoTrading.Contracts.Interfaces;
 using CryptoTrading.Domain.Entities;
 using Dapper;
-using DbUp;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -15,43 +14,13 @@ namespace CryptoTrading.Infrastructure.Persistence;
 /// </summary>
 public class FeatureStore : IFeatureStore
 {
-    private readonly string _connectionString;
+    private readonly NpgsqlDataSource _dataSource;
     private readonly IMetricsService? _metrics;
 
-    public FeatureStore(IConfiguration configuration, IMetricsService? metrics = null)
+    public FeatureStore(NpgsqlDataSource dataSource, IMetricsService? metrics = null)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Database=cryptotrading;Username=postgres;Password=postgres";
+        _dataSource = dataSource;
         _metrics = metrics;
-    }
-
-    /// <summary>
-    /// Construtor para testes unitários ou injeção direta de connection string.
-    /// </summary>
-    public FeatureStore(string connectionString, IMetricsService? metrics = null)
-    {
-        _connectionString = connectionString;
-        _metrics = metrics;
-    }
-
-    private IDbConnection CreateConnection() => new NpgsqlConnection(_connectionString);
-
-    public async Task InitializeSchemaAsync()
-    {
-        var upgrader = DeployChanges.To
-            .PostgresqlDatabase(_connectionString)
-            .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly(), script => script.StartsWith("CryptoTrading.Infrastructure.Persistence.Migrations.Scripts."))
-            .LogToConsole()
-            .Build();
-
-        var result = upgrader.PerformUpgrade();
-
-        if (!result.Successful)
-        {
-            throw new Exception("Falha na migração do banco de dados (DbUp).", result.Error);
-        }
-
-        await Task.CompletedTask;
     }
 
     public async Task SaveCandlesAsync(IEnumerable<Candle> candles)
@@ -60,48 +29,49 @@ public class FeatureStore : IFeatureStore
         if (!candleList.Any()) return;
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        const string insertSql = @"
-        INSERT INTO candles (symbol, interval, open_time, open, high, low, close, volume, taker_buy_volume, close_time)
-        SELECT * FROM UNNEST(@Symbols, @Intervals, @OpenTimes, @Opens, @Highs, @Lows, @Closes, @Volumes, @TakerBuyVolumes, @CloseTimes)
-        ON CONFLICT (symbol, interval, open_time) DO UPDATE 
-        SET open = EXCLUDED.open,
-            high = EXCLUDED.high,
-            low = EXCLUDED.low,
-            close = EXCLUDED.close,
-            volume = EXCLUDED.volume,
-            taker_buy_volume = EXCLUDED.taker_buy_volume,
-            close_time = EXCLUDED.close_time
-        RETURNING id;";
 
-        using var conn = CreateConnection();
-        conn.Open();
-        using var tx = conn.BeginTransaction();
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        await using var tx = await conn.BeginTransactionAsync();
 
         try
         {
-            var parameters = new
-            {
-                Symbols = candleList.Select(c => c.Symbol).ToArray(),
-                Intervals = candleList.Select(c => c.Interval).ToArray(),
-                OpenTimes = candleList.Select(c => c.OpenTime).ToArray(),
-                Opens = candleList.Select(c => c.Open).ToArray(),
-                Highs = candleList.Select(c => c.High).ToArray(),
-                Lows = candleList.Select(c => c.Low).ToArray(),
-                Closes = candleList.Select(c => c.Close).ToArray(),
-                Volumes = candleList.Select(c => c.Volume).ToArray(),
-                TakerBuyVolumes = candleList.Select(c => c.TakerBuyVolume).ToArray(),
-                CloseTimes = candleList.Select(c => c.CloseTime).ToArray()
-            };
+            await conn.ExecuteAsync("CREATE TEMP TABLE temp_candles (LIKE candles INCLUDING DEFAULTS) ON COMMIT DROP;", transaction: tx);
 
-            var returnedIds = (await conn.QueryAsync<long>(insertSql, parameters, tx)).ToList();
+            using (var writer = await conn.BeginBinaryImportAsync("COPY temp_candles (symbol, interval, open_time, open, high, low, close, volume, taker_buy_volume, close_time) FROM STDIN (FORMAT BINARY)"))
+            {
+                foreach (var candle in candleList)
+                {
+                    await writer.StartRowAsync();
+                    await writer.WriteAsync(candle.Symbol, NpgsqlTypes.NpgsqlDbType.Varchar);
+                    await writer.WriteAsync(candle.Interval, NpgsqlTypes.NpgsqlDbType.Varchar);
+                    await writer.WriteAsync(candle.OpenTime, NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                    await writer.WriteAsync(candle.Open, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(candle.High, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(candle.Low, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(candle.Close, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(candle.Volume, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(candle.TakerBuyVolume, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(candle.CloseTime, NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                }
+                await writer.CompleteAsync();
+            }
             
-            // Atribuir IDs gerados/atualizados aos objetos de volta, assumindo que a ordem é preservada no UNNEST
+            const string insertSql = @"
+                INSERT INTO candles (symbol, interval, open_time, open, high, low, close, volume, taker_buy_volume, close_time)
+                SELECT symbol, interval, open_time, open, high, low, close, volume, taker_buy_volume, close_time FROM temp_candles
+                ON CONFLICT (symbol, interval, open_time) DO UPDATE 
+                SET open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low, close = EXCLUDED.close, 
+                    volume = EXCLUDED.volume, taker_buy_volume = EXCLUDED.taker_buy_volume, close_time = EXCLUDED.close_time
+                RETURNING id;";
+
+            var returnedIds = (await conn.QueryAsync<long>(insertSql, null, tx)).ToList();
+            
             for (int i = 0; i < candleList.Count; i++)
             {
                 candleList[i].Id = returnedIds[i];
             }
 
-            tx.Commit();
+            await tx.CommitAsync();
             
             sw.Stop();
             if (_metrics != null)
@@ -112,56 +82,75 @@ public class FeatureStore : IFeatureStore
         }
         catch
         {
-            tx.Rollback();
+            await tx.RollbackAsync();
             throw;
         }
     }
 
     public async Task SaveFeaturesAsync(IEnumerable<CandleFeature> features)
     {
-        // Se a coleção estiver vazia, não executa nada
         var featureList = features.ToList();
         if (!featureList.Any()) return;
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        const string insertSql = @"
-        INSERT INTO candle_features (candle_id, symbol, open_time, ema_9, ema_21, ema_50, ema_200, rsi_14, macd_value, macd_signal, macd_histogram, atr_14, bb_upper, bb_middle, bb_lower, adx, returns, volume_z_score, spread, imbalance, calculated_at)
-        VALUES (@CandleId, @Symbol, @OpenTime, @Ema9, @Ema21, @Ema50, @Ema200, @Rsi14, @MacdValue, @MacdSignal, @MacdHistogram, @Atr14, @BbUpper, @BbMiddle, @BbLower, @Adx, @Returns, @VolumeZScore, @Spread, @Imbalance, @CalculatedAt)
-        ON CONFLICT (candle_id) DO UPDATE
-        SET ema_9 = EXCLUDED.ema_9,
-            ema_21 = EXCLUDED.ema_21,
-            ema_50 = EXCLUDED.ema_50,
-            ema_200 = EXCLUDED.ema_200,
-            rsi_14 = EXCLUDED.rsi_14,
-            macd_value = EXCLUDED.macd_value,
-            macd_signal = EXCLUDED.macd_signal,
-            macd_histogram = EXCLUDED.macd_histogram,
-            atr_14 = EXCLUDED.atr_14,
-            bb_upper = EXCLUDED.bb_upper,
-            bb_middle = EXCLUDED.bb_middle,
-            bb_lower = EXCLUDED.bb_lower,
-            adx = EXCLUDED.adx,
-            returns = EXCLUDED.returns,
-            volume_z_score = EXCLUDED.volume_z_score,
-            spread = EXCLUDED.spread,
-            imbalance = EXCLUDED.imbalance,
-            calculated_at = EXCLUDED.calculated_at;";
 
-        using var conn = CreateConnection();
-        conn.Open();
-        using var tx = conn.BeginTransaction();
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        await using var tx = await conn.BeginTransactionAsync();
 
         try
         {
-            await conn.ExecuteAsync(insertSql, featureList, tx);
-            tx.Commit();
+            await conn.ExecuteAsync("CREATE TEMP TABLE temp_candle_features (LIKE candle_features INCLUDING DEFAULTS) ON COMMIT DROP;", transaction: tx);
+
+            using (var writer = await conn.BeginBinaryImportAsync("COPY temp_candle_features (candle_id, symbol, open_time, ema_9, ema_21, ema_50, ema_200, rsi_14, macd_value, macd_signal, macd_histogram, atr_14, bb_upper, bb_middle, bb_lower, adx, returns, volume_z_score, spread, imbalance, calculated_at) FROM STDIN (FORMAT BINARY)"))
+            {
+                foreach (var f in featureList)
+                {
+                    await writer.StartRowAsync();
+                    await writer.WriteAsync(f.CandleId, NpgsqlTypes.NpgsqlDbType.Bigint);
+                    await writer.WriteAsync(f.Symbol, NpgsqlTypes.NpgsqlDbType.Varchar);
+                    await writer.WriteAsync(f.OpenTime, NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                    await writer.WriteAsync(f.Ema9, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Ema21, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Ema50, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Ema200, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Rsi14, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.MacdValue, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.MacdSignal, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.MacdHistogram, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Atr14, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.BbUpper, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.BbMiddle, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.BbLower, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Adx, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Returns, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.VolumeZScore, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Spread, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.Imbalance, NpgsqlTypes.NpgsqlDbType.Numeric);
+                    await writer.WriteAsync(f.CalculatedAt, NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                }
+                await writer.CompleteAsync();
+            }
+
+            const string insertSql = @"
+                INSERT INTO candle_features (candle_id, symbol, open_time, ema_9, ema_21, ema_50, ema_200, rsi_14, macd_value, macd_signal, macd_histogram, atr_14, bb_upper, bb_middle, bb_lower, adx, returns, volume_z_score, spread, imbalance, calculated_at)
+                SELECT * FROM temp_candle_features
+                ON CONFLICT (candle_id) DO UPDATE
+                SET ema_9 = EXCLUDED.ema_9, ema_21 = EXCLUDED.ema_21, ema_50 = EXCLUDED.ema_50, ema_200 = EXCLUDED.ema_200,
+                    rsi_14 = EXCLUDED.rsi_14, macd_value = EXCLUDED.macd_value, macd_signal = EXCLUDED.macd_signal,
+                    macd_histogram = EXCLUDED.macd_histogram, atr_14 = EXCLUDED.atr_14, bb_upper = EXCLUDED.bb_upper,
+                    bb_middle = EXCLUDED.bb_middle, bb_lower = EXCLUDED.bb_lower, adx = EXCLUDED.adx, returns = EXCLUDED.returns,
+                    volume_z_score = EXCLUDED.volume_z_score, spread = EXCLUDED.spread, imbalance = EXCLUDED.imbalance,
+                    calculated_at = EXCLUDED.calculated_at;";
+            
+            await conn.ExecuteAsync(insertSql, transaction: tx);
+            await tx.CommitAsync();
 
             sw.Stop();
             _metrics?.SetDbLatency(sw.Elapsed.TotalMilliseconds);
         }
         catch
         {
-            tx.Rollback();
+            await tx.RollbackAsync();
             throw;
         }
     }
@@ -175,7 +164,7 @@ public class FeatureStore : IFeatureStore
         ORDER BY open_time DESC 
         LIMIT 1;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryFirstOrDefaultAsync<DateTime?>(query, new { Symbol = symbol, Interval = interval });
     }
 
@@ -190,7 +179,7 @@ public class FeatureStore : IFeatureStore
         WHERE c.symbol = @Symbol AND c.interval = @Interval AND c.open_time >= @StartTime AND c.open_time <= @EndTime
         ORDER BY c.open_time ASC;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         var points = await conn.QueryAsync<Candle, CandleFeature, MarketDataPoint>(
             query,
             (candle, feature) => new MarketDataPoint { Candle = candle, Feature = feature },
@@ -209,14 +198,14 @@ public class FeatureStore : IFeatureStore
         ON CONFLICT (symbol) DO UPDATE 
         SET free = EXCLUDED.free, locked = EXCLUDED.locked, updated_at = EXCLUDED.updated_at;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql, balance);
     }
 
     public async Task<IEnumerable<WalletBalance>> GetWalletBalancesAsync()
     {
         const string sql = "SELECT symbol, free, locked, updated_at AS UpdatedAt FROM paper_wallet;";
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryAsync<WalletBalance>(sql);
     }
 
@@ -226,7 +215,7 @@ public class FeatureStore : IFeatureStore
         INSERT INTO paper_trades (symbol, type, price, quantity, fee, pnl, executed_at) 
         VALUES (@Symbol, @Type, @Price, @Quantity, @Fee, @PnL, @ExecutedAt);";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql, trade);
     }
 
@@ -239,18 +228,13 @@ public class FeatureStore : IFeatureStore
         ORDER BY executed_at DESC 
         LIMIT @Limit;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryAsync<PaperTrade>(sql, new { Symbol = symbol, Limit = limit });
     }
 
     public async Task SavePaperPositionAsync(Position position)
     {
-        using var conn = CreateConnection();
-        // Se a posição for nova, Id provavelmente será 0. Não podemos fazer ON CONFLICT em (id) se o id não vier setado.
-        // Se usarmos id BIGSERIAL e mandarmos DEFAULT no insert, o ON CONFLICT (id) só funciona para atualizações se o id estiver correto.
-        // Wait, a melhor abordagem é se Position.Id == 0 faz INSERT RETURNING id. Se Id > 0 faz UPDATE.
-        
-        
+        await using var conn = await _dataSource.OpenConnectionAsync();
         if (position.Id == 0)
         {
             const string insertSql = @"
@@ -281,7 +265,7 @@ public class FeatureStore : IFeatureStore
         ORDER BY entry_time DESC 
         LIMIT 1;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         var result = await conn.QueryFirstOrDefaultAsync<dynamic>(sql, new { Symbol = symbol });
         if (result == null) return null;
         
@@ -309,7 +293,7 @@ public class FeatureStore : IFeatureStore
         INSERT INTO decision_audits (symbol, strategy_name, signal_type, price, timestamp, decision, reason) 
         VALUES (@Symbol, @StrategyName, @SignalType, @Price, @Timestamp, @Decision, @Reason);";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql, audit);
     }
 
@@ -321,7 +305,7 @@ public class FeatureStore : IFeatureStore
         ORDER BY timestamp DESC 
         LIMIT @Limit;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryAsync<DecisionAudit>(sql, new { Limit = limit });
     }
 
@@ -332,7 +316,7 @@ public class FeatureStore : IFeatureStore
         DELETE FROM decision_audits; 
         UPDATE paper_wallet SET free = 10000.0, locked = 0.0, updated_at = NOW();";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql);
     }
 
@@ -350,7 +334,7 @@ public class FeatureStore : IFeatureStore
             price_precision = EXCLUDED.price_precision, 
             quantity_precision = EXCLUDED.quantity_precision;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql, filter);
     }
 
@@ -361,7 +345,7 @@ public class FeatureStore : IFeatureStore
         FROM exchange_filter_info 
         WHERE symbol = @Symbol;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryFirstOrDefaultAsync<ExchangeFilterInfo>(sql, new { Symbol = symbol.ToUpper() });
     }
 
@@ -375,7 +359,7 @@ public class FeatureStore : IFeatureStore
             status = EXCLUDED.status, 
             updated_at = EXCLUDED.updated_at;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql, order);
     }
 
@@ -386,7 +370,7 @@ public class FeatureStore : IFeatureStore
         FROM testnet_orders 
         WHERE client_order_id = @ClientOrderId;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryFirstOrDefaultAsync<TestnetOrder>(sql, new { ClientOrderId = clientOrderId });
     }
 
@@ -397,7 +381,7 @@ public class FeatureStore : IFeatureStore
         FROM testnet_orders 
         WHERE status IN ('NEW', 'PARTIALLY_FILLED');";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryAsync<TestnetOrder>(sql);
     }
 
@@ -407,7 +391,7 @@ public class FeatureStore : IFeatureStore
         INSERT INTO testnet_audit_logs (symbol, action, status, details, created_at) 
         VALUES (@Symbol, @Action, @Status, @Details, @CreatedAt);";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         await conn.ExecuteAsync(sql, log);
     }
 
@@ -419,7 +403,7 @@ public class FeatureStore : IFeatureStore
         ORDER BY created_at DESC 
         LIMIT @Limit;";
 
-        using var conn = CreateConnection();
+        await using var conn = await _dataSource.OpenConnectionAsync();
         return await conn.QueryAsync<TestnetAuditLog>(sql, new { Limit = limit });
     }
 }

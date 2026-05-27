@@ -10,7 +10,6 @@ public interface IFeatureStore
     /// <summary>
     /// Garante que o schema relacional (tabelas e índices) esteja criado no banco de dados.
     /// </summary>
-    Task InitializeSchemaAsync();
 
     /// <summary>
     /// Insere ou atualiza candles históricos em lote de forma altamente eficiente.
