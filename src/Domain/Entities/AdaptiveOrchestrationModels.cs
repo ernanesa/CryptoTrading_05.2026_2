@@ -15,6 +15,7 @@ public class AdaptiveOrchestrationRequest
     public RiskStatus RiskStatus { get; set; } = RiskStatus.Normal;
     public bool DataQualityPassed { get; set; } = true;
     public Dictionary<string, BacktestReport> HistoricalReports { get; set; } = new();
+    public Dictionary<string, StrategyPerformanceMetric> RealMetrics { get; set; } = new();
 }
 
 public class AdaptiveOrchestrationDecision
@@ -96,4 +97,30 @@ public class BanditAllocation
     public string SelectedArm { get; set; } = string.Empty;
     public decimal ExplorationWeight { get; set; }
     public decimal ExploitationWeight { get; set; }
+}
+
+public class StrategyPerformanceMetric
+{
+    public string StrategyName { get; set; } = string.Empty;
+    public string Symbol { get; set; } = string.Empty;
+    public string Timeframe { get; set; } = string.Empty;
+    public string Regime { get; set; } = string.Empty;
+    public decimal WinRate { get; set; }
+    public decimal ProfitFactor { get; set; }
+    public decimal MaxDrawdown { get; set; }
+    public int ConsecutiveLosses { get; set; }
+    public decimal SlippageTolerance { get; set; }
+    public int RiskRejections { get; set; }
+    public DateTime LastUpdated { get; set; }
+}
+
+public class StrategyState
+{
+    public string StrategyName { get; set; } = string.Empty;
+    public string Symbol { get; set; } = string.Empty;
+    public bool IsPaused { get; set; }
+    public DateTime? CooldownUntil { get; set; }
+    public decimal LastScore { get; set; }
+    public int AdvantageCycles { get; set; }
+    public DateTime LastUpdated { get; set; }
 }

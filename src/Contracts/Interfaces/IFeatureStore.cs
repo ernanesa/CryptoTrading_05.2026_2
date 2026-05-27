@@ -114,4 +114,9 @@ public interface IFeatureStore
     /// Resgata logs de auditoria da Testnet de forma ordenada.
     /// </summary>
     Task<IEnumerable<TestnetAuditLog>> GetTestnetAuditLogsAsync(int limit = 100);
+
+    Task SaveStrategyPerformanceMetricAsync(StrategyPerformanceMetric metric);
+    Task<StrategyPerformanceMetric?> GetStrategyPerformanceMetricAsync(string strategyName, string symbol, string timeframe, string regime);
+    Task SaveStrategyStateAsync(StrategyState state);
+    Task<StrategyState?> GetStrategyStateAsync(string strategyName, string symbol);
 }

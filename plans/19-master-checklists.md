@@ -352,3 +352,4 @@ Consulta: proxima atividade orquestracao adaptativa estrategias registradas perf
 Contexto encontrado: mapeamento de nomes de estratégias no tracker de performance e ScoringService da Stage 07.
 Impacto: Implementada nova estratégia `MacdAdxTrendFollowingStrategy`, registrada no `StrategyRegistry` e adicionada aos serviços de mapeamento e score de orquestração adaptativa, com suíte de testes xUnit verde e 0 warnings no build.
 Data: 2026-05-22
+- [x] M7: Adaptive Real Metrics persistidas e aplicadas na orquestração, e testes executados.
