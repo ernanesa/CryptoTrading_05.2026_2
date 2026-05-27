@@ -466,7 +466,7 @@ app.MapGet("/api/testnet/filters/{symbol}", async (string symbol, IFeatureStore 
 .WithName("GetExchangeFilters");
 
 // 11. Binance Testnet — Enviar uma ordem de trade em sandbox (ou real se habilitado)
-app.MapPost("/api/testnet/order", async (TestnetOrderSubmission request, BinanceTestnetExecutor executor) =>
+app.MapPost("/api/testnet/order", async (TestnetOrderSubmission request, BinanceTestnetExecutor executor, IFeatureStore store) =>
 {
     if (request.Order == null)
     {
@@ -477,6 +477,23 @@ app.MapPost("/api/testnet/order", async (TestnetOrderSubmission request, Binance
     order.ClientOrderId = $"CLIENT_{Guid.NewGuid().ToString().Substring(0, 10).ToUpper()}";
     order.CreatedAt = DateTime.UtcNow;
     order.UpdatedAt = DateTime.UtcNow;
+
+    var nowUtc = DateTime.UtcNow;
+    var validation = TestnetOrderSubmissionGuard.Validate(order, request.RiskDecision, nowUtc);
+    await store.SaveDecisionAuditAsync(TestnetOrderSubmissionGuard.CreateDecisionAudit(order, request.RiskDecision, validation, nowUtc));
+
+    if (!validation.IsApproved)
+    {
+        await store.SaveTestnetAuditLogAsync(new TestnetAuditLog
+        {
+            Symbol = order.Symbol,
+            Action = "TESTNET_REST_RISK_DECISION_REJECTED",
+            Status = "FAILED",
+            Details = validation.Reason
+        });
+
+        return Results.BadRequest(new { Message = "Ordem bloqueada antes da Testnet.", Reason = validation.Reason });
+    }
 
     var result = await executor.ExecuteOrderAsync(order, request.RiskDecision);
     return result.Status == TestnetOrderStatus.Rejected.ToString()

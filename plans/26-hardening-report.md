@@ -32,14 +32,21 @@ O projeto `tools/benchmarks/CryptoTrading.Benchmarks` executa os cenarios locais
 
 ## Automacao CI
 
-O workflow `.github/workflows/hardening-gates.yml` executa os gates de hardening em `push` e `pull_request` para `main` e `develop`:
+O workflow `.github/workflows/ci.yml` executa os gates obrigatorios rapidos em `push` e `pull_request` para `main` e `develop`:
 
-- build e testes .NET em Release via `CryptoTrading.UnitTests`;
+- restore/build .NET em Release;
+- `dotnet test --no-build --configuration Release`;
 - build do dashboard com `npm ci` + `npm run build`;
-- smoke benchmark de `AdaptiveStrategyOrchestrator.Decide`;
-- smoke benchmark de `IndicatorService.CalculateFeatures`.
+- `git diff --check`.
 
-Os cenarios `FeatureStore.GetMarketDataPointsAsync` e `ApiWorker.NativeAot.Publish` seguem opt-in porque dependem, respectivamente, de fixture PostgreSQL e toolchain/AOT especifico.
+O workflow `.github/workflows/hardening-gates.yml` fica restrito a `workflow_dispatch` e concentra gates manuais opt-in:
+
+- smoke Playwright do dashboard (`run_playwright=true`);
+- testes PostgreSQL/Testcontainers (`run_integration_tests=true`);
+- benchmark PostgreSQL do FeatureStore (`run_featurestore_benchmark=true`);
+- publish Native AOT de API/Worker (`run_native_aot=true`).
+
+Os cenarios que dependem de Docker, browsers ou toolchain Native AOT seguem opt-in para manter o CI obrigatorio rapido e reprodutivel.
 
 ## Chaos scenarios registrados
 

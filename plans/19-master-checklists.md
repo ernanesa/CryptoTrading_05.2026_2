@@ -391,3 +391,23 @@ Consulta: M9 reality check Binance RiskDecision RuntimeMode RAG context-pack rel
 Contexto encontrado: foco em Binance Testnet com barreira `RiskDecision`, `RuntimeMode`, hardening/release readiness e protocolo RAG local.
 Impacto: M9 deixou explicito que o executor Testnet possui gate estrito concluido, mas a rota REST ainda precisa receber `RiskDecision`; o RuntimeMode existe no backend, porem o dashboard ainda precisa consumir `/api/runtime/status` como fonte canonica.
 Data: 2026-05-27
+
+## Rodada final P0/P1 — Testnet, Paper, Adaptive e Readiness
+
+- [x] data atual verificada: 2026-05-27 / America/Maceio;
+- [x] RAG local consultado com `context-pack` e `optimize-input --profile antigravity`;
+- [x] subagentes paralelos usados para Paper Trading, Adaptive Feedback e Readiness;
+- [x] ponte REST Testnet reforcada com pre-validacao de `RiskDecision`;
+- [x] `DecisionAudit` registrado antes de chamar o executor Testnet;
+- [x] Paper Trading reconciliando `New -> Open`, fill zero, PnL incremental de venda e poeira de fechamento;
+- [x] Adaptive score breakdown estruturado adicionado aos snapshots de score;
+- [x] docs de readiness alinhadas a CI obrigatorio rapido e hardening opt-in;
+- [x] validacoes executadas: `dotnet test -c Release`, `cd dashboard && npm run build`, Playwright e `git diff --check`.
+
+### Registro da rodada final P0/P1
+
+RAG consultado: sim
+Consulta: final MVP readiness Testnet RiskDecision RuntimeMode Paper StateMachine Adaptive Feedback; Executar rodada final MVP com Testnet RuntimeMode Paper Adaptive Backtesting Intelligence RAG Readiness
+Contexto encontrado: foco em Testnet com `RiskDecision`, clareza de RuntimeMode, Paper Trading com estado/reconciliacao, Adaptive score/feedback e readiness com gates separados.
+Impacto: Fluxos P0/P1 ficaram mais auditaveis e testaveis sem autorizar live trading real.
+Data: 2026-05-27

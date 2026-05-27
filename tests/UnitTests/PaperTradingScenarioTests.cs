@@ -81,4 +81,80 @@ public class PaperTradingScenarioTests
         var position3 = await store.GetActivePaperPositionAsync("BTCUSDT");
         Assert.Equal(0.05m, position3!.Quantity);
     }
+
+    [Fact]
+    public async Task PaperTradeExecutor_ReconcileOrders_ShouldMoveNewLimitOrderToOpen_WhenNotFilled()
+    {
+        var store = new PaperTradingTests.InMemoryFeatureStore();
+        var executor = new PaperTradeExecutor(store, new RiskEngine());
+        var point = new MarketDataPoint
+        {
+            Candle = new Candle { Symbol = "BTCUSDT", Interval = "1m", OpenTime = DateTime.UtcNow, High = 50100m, Low = 49900m, Close = 50000m, Volume = 1m },
+            Feature = new CandleFeature { Spread = 10m }
+        };
+
+        await store.SavePaperOrderAsync(new PaperOrder
+        {
+            Symbol = "BTCUSDT",
+            Side = "BUY",
+            Type = OrderType.Limit,
+            Price = 49000m,
+            Quantity = 0.01m,
+            Status = OrderStatus.New,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await executor.ProcessSignalAsync(new EmaTrendFollowingStrategy(), point);
+
+        var order = Assert.Single(await store.GetActivePaperOrdersAsync("BTCUSDT"));
+        Assert.Equal(OrderStatus.Open, order.Status);
+        Assert.Equal(0m, order.FilledQuantity);
+        Assert.NotNull(order.UpdatedAt);
+        Assert.Empty(store.Trades);
+    }
+
+    [Fact]
+    public async Task PaperTradeExecutor_ReconcileOrders_ShouldRecordIncrementalSellPnL()
+    {
+        var store = new PaperTradingTests.InMemoryFeatureStore();
+        await store.SaveWalletBalanceAsync(new WalletBalance { Symbol = "BTC", Free = 0.02m, Locked = 0m, UpdatedAt = DateTime.UtcNow });
+        await store.SavePaperPositionAsync(new Position
+        {
+            Symbol = "BTCUSDT",
+            Type = PositionType.Long,
+            EntryPrice = 50000m,
+            Quantity = 0.02m,
+            EntryTime = DateTime.UtcNow.AddMinutes(-5),
+            State = PositionState.Open
+        });
+
+        await store.SavePaperOrderAsync(new PaperOrder
+        {
+            Symbol = "BTCUSDT",
+            Side = "SELL",
+            Type = OrderType.Market,
+            Price = 51000m,
+            Quantity = 0.02m,
+            Status = OrderStatus.New,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var executor = new PaperTradeExecutor(store, new RiskEngine());
+        var point = new MarketDataPoint
+        {
+            Candle = new Candle { Symbol = "BTCUSDT", Interval = "1m", OpenTime = DateTime.UtcNow, Close = 51000m, Volume = 10m },
+            Feature = new CandleFeature { Spread = 10m }
+        };
+
+        await executor.ProcessSignalAsync(new EmaTrendFollowingStrategy(), point);
+
+        var trade = Assert.Single(store.Trades);
+        Assert.Equal("SELL", trade.Type);
+        Assert.Equal(18.8801m, trade.PnL);
+
+        var position = store.Positions.Single();
+        Assert.True(position.IsClosed);
+        Assert.Equal(0m, position.Quantity);
+        Assert.Equal(0m, store.Balances.Single(b => b.Symbol == "BTC").Free);
+    }
 }

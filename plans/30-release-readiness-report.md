@@ -22,6 +22,9 @@
 ## Gates Structure
 - **Mandatory Gates (`ci.yml`)**: Includes dotnet build, xUnit unit tests, dashboard npm build, and git diff checks. Runs on all pushes to `main` and `develop`.
 - **Opt-In Gates (`hardening-gates.yml`)**: Runs via workflow dispatch. Includes Playwright, Testcontainers for integration tests, FeatureStore Benchmark, and Native AOT validation.
+- **Dependabot (`dependabot.yml`)**: Weekly updates are enabled for NuGet, dashboard npm packages, and GitHub Actions.
+- **Live Trading Boundary**: The MVP readiness scope does not authorize real live trading. Testnet execution remains guarded by `RiskDecision`, and real exchange credentials must stay environment-provided and redacted.
+- **Redaction Gate**: Secret masking is covered by the mandatory .NET unit test suite through `SecretRedactor`; external secret scanning remains a repository/security setting outside local CI.
 
 ## Actionable Next Steps
 - Periodically review Dependabot PRs.

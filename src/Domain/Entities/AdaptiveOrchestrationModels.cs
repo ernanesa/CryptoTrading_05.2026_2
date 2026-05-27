@@ -46,6 +46,13 @@ public class StrategyScoreSnapshot
 {
     public string StrategyName { get; set; } = string.Empty;
     public decimal Score { get; set; }
+    public decimal RegimeFitScore { get; set; }
+    public decimal ExpectancyScore { get; set; }
+    public decimal ProfitFactorScore { get; set; }
+    public decimal DrawdownScore { get; set; }
+    public decimal ExecutionCostScore { get; set; }
+    public decimal SignalQualityScore { get; set; }
+    public decimal StabilityScore { get; set; }
     public string RegimeFit { get; set; } = string.Empty;
     public string Explanation { get; set; } = string.Empty;
 }

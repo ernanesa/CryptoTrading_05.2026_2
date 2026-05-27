@@ -131,6 +131,13 @@ public class StrategyScoringService
         {
             StrategyName = strategyName,
             Score = RoundScore(score),
+            RegimeFitScore = RoundScore(regimeFitScore),
+            ExpectancyScore = RoundScore(expectancyScore),
+            ProfitFactorScore = RoundScore(profitFactorScore),
+            DrawdownScore = RoundScore(drawdownScore),
+            ExecutionCostScore = RoundScore(cost.Score),
+            SignalQualityScore = RoundScore(signalQualityScore),
+            StabilityScore = RoundScore(stabilityScore),
             RegimeFit = $"{intelligence.MarketRegime}:{regimeFitScore:F2}",
             Explanation = "Regime fit, expectancy, cost, signal quality and stability combined."
         };

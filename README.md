@@ -104,12 +104,13 @@ dotnet test tests/IntegrationTests/CryptoTrading.IntegrationTests.csproj -c Rele
 
 CI de hardening:
 
-- `.github/workflows/hardening-gates.yml` valida build, testes, dashboard e smoke benchmarks.
-- O mesmo workflow permite rodar manualmente o gate Native AOT com `workflow_dispatch` e `run_native_aot=true`.
-- O mesmo workflow permite rodar manualmente o smoke Playwright com `workflow_dispatch` e `run_playwright=true`.
-- O mesmo workflow permite rodar manualmente os testes PostgreSQL/Testcontainers com `workflow_dispatch` e `run_integration_tests=true`.
-- O mesmo workflow permite rodar manualmente o benchmark PostgreSQL do FeatureStore com `workflow_dispatch` e `run_featurestore_benchmark=true`.
-- `.github/workflows/dotnet.yml` fica restrito ao build/test padrão; Native AOT permanece no gate manual opt-in.
+- `.github/workflows/ci.yml` e o gate obrigatorio rapido em `push`/`pull_request`: restore/build .NET Release, `dotnet test`, build do dashboard e `git diff --check`.
+- `.github/workflows/hardening-gates.yml` e manual por `workflow_dispatch`.
+- O gate manual permite rodar Native AOT com `run_native_aot=true`.
+- O gate manual permite rodar smoke Playwright com `run_playwright=true`.
+- O gate manual permite rodar testes PostgreSQL/Testcontainers com `run_integration_tests=true`.
+- O gate manual permite rodar benchmark PostgreSQL do FeatureStore com `run_featurestore_benchmark=true`.
+- Native AOT, Playwright e Testcontainers permanecem opt-in por dependerem de toolchain, browsers, Docker ou imagens externas.
 
 ## Documentação
 

@@ -50,6 +50,16 @@ public class AdaptiveOrchestrationTests
         Assert.Equal("TrendingUp", decision.MarketRegime);
         Assert.Contains(decision.CandidateStrategyName, new[] { "EMA Trend Following", "ATR Breakout" });
         Assert.NotEmpty(decision.StrategyScores);
+        Assert.All(decision.StrategyScores, score =>
+        {
+            Assert.InRange(score.RegimeFitScore, 0m, 100m);
+            Assert.InRange(score.ExpectancyScore, 0m, 100m);
+            Assert.InRange(score.ProfitFactorScore, 0m, 100m);
+            Assert.InRange(score.DrawdownScore, 0m, 100m);
+            Assert.InRange(score.ExecutionCostScore, 0m, 100m);
+            Assert.InRange(score.SignalQualityScore, 0m, 100m);
+            Assert.InRange(score.StabilityScore, 0m, 100m);
+        });
         Assert.NotEmpty(decision.AssetScores);
         Assert.NotEmpty(decision.Reasons);
         Assert.True(decision.PositionSize > 0m);

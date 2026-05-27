@@ -213,6 +213,13 @@ public class PaperTradeExecutor
             if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Expired || order.Status == OrderStatus.Filled)
                 continue;
 
+            if (order.Status == OrderStatus.New)
+            {
+                order.Status = OrderStatus.Open;
+                order.UpdatedAt = DateTime.UtcNow;
+                await _store.SavePaperOrderAsync(order);
+            }
+
             // Simple limit order matching:
             bool canFill = false;
             decimal fillPrice = order.Price;
@@ -241,14 +248,20 @@ public class PaperTradeExecutor
             if (canFill)
             {
                 decimal fillQty = Math.Min(order.RemainingQuantity, availableLiquidity);
+                if (fillQty <= 0)
+                    continue;
+
                 availableLiquidity -= fillQty;
 
                 decimal fillValue = fillQty * fillPrice;
                 decimal fee = fillValue * 0.001m; // 0.1% fee
 
+                var realizedBeforeFill = activePosition?.RealizedPnL ?? 0m;
+
                 order.FilledQuantity += fillQty;
                 order.AverageFillPrice = ((order.AverageFillPrice * (order.FilledQuantity - fillQty)) + (fillPrice * fillQty)) / order.FilledQuantity;
                 order.FeePaid += fee;
+                order.UpdatedAt = DateTime.UtcNow;
 
                 if (order.RemainingQuantity <= 0.00000001m)
                 {
@@ -264,9 +277,12 @@ public class PaperTradeExecutor
 
                 // Update Position and Wallet
                 var usdtBalance = balances.First(b => b.Symbol == "USDT");
-                var assetBalance = balances.First(b => b.Symbol == symbol.Replace("USDT", ""));
+                var assetSymbol = symbol.EndsWith("USDT", StringComparison.OrdinalIgnoreCase)
+                    ? symbol[..^4]
+                    : symbol;
+                var assetBalance = balances.First(b => b.Symbol.Equals(assetSymbol, StringComparison.OrdinalIgnoreCase));
 
-                if (order.Side == "BUY")
+                if (order.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase))
                 {
                     usdtBalance.Free -= (fillValue + fee);
                     assetBalance.Free += fillQty;
@@ -296,10 +312,17 @@ public class PaperTradeExecutor
                 {
                     usdtBalance.Free += (fillValue - fee);
                     assetBalance.Free -= fillQty;
+                    if (Math.Abs(assetBalance.Free) <= 0.00000001m)
+                        assetBalance.Free = 0m;
 
                     if (activePosition != null && !activePosition.IsClosed)
                     {
                         activePosition.PartiallyClose(fillPrice, fillQty, fee);
+                        if (activePosition.IsClosed || activePosition.Quantity <= 0.00000001m)
+                        {
+                            activePosition.Quantity = 0m;
+                            assetBalance.Free = 0m;
+                        }
                     }
                 }
 
@@ -319,7 +342,9 @@ public class PaperTradeExecutor
                     Price = fillPrice,
                     Quantity = fillQty,
                     Fee = fee,
-                    PnL = activePosition?.RealizedPnL ?? 0, // Simplified
+                    PnL = order.Side.Equals("SELL", StringComparison.OrdinalIgnoreCase) && activePosition != null
+                        ? activePosition.RealizedPnL - realizedBeforeFill
+                        : 0m,
                     ExecutedAt = DateTime.UtcNow
                 };
                 await _store.SavePaperTradeAsync(trade);
@@ -327,4 +352,3 @@ public class PaperTradeExecutor
         }
     }
 }
-
